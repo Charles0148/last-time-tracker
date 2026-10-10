@@ -1,11 +1,11 @@
 {
-  "name":"距今｜時間與心情紀錄",
-  "short_name":"距今",
-  "description":"記住事情上次發生的時間，也留下當下的心情。",
+  "name":"距今小島｜行動心情日記",
+  "short_name":"距今小島",
+  "description":"記錄做過的事、當下心情，孵化每天獨一無二的小怪物。",
   "start_url":"./",
   "display":"standalone",
-  "background_color":"#f5f1e8",
-  "theme_color":"#f5f1e8",
+  "background_color":"#fff8ea",
+  "theme_color":"#fff8ea",
   "lang":"zh-Hant",
   "icons":[]
 }

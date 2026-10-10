@@ -3,140 +3,128 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#f5f1e8">
-  <meta name="description" content="距今：記住事情上次發生的時間，也留下當下的心情。">
-  <title>距今｜時間與心情紀錄</title>
+  <meta name="theme-color" content="#fff7e9">
+  <meta name="description" content="距今小島：記錄做過的事、當下心情，孵化每天獨一無二的小怪物。">
+  <title>距今小島｜行動心情日記</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <div class="sky-decor" aria-hidden="true"><i></i><i></i><i></i></div>
   <div class="app-shell">
     <header class="topbar">
-      <div class="brand" aria-label="距今首頁">
-        <span class="brand-mark">今</span>
-        <div><strong>距今</strong><small>記住發生，也留下感受</small></div>
-      </div>
-      <button class="icon-button" id="themeBtn" aria-label="切換深色模式" title="切換深色模式">☾</button>
+      <button class="brand" data-go="home" aria-label="距今小島首頁"><span class="brand-mark">島</span><span><strong>距今小島</strong><small>做過的事，會長成今天的怪物</small></span></button>
+      <button class="round-button" id="themeBtn" aria-label="切換深色模式">☾</button>
     </header>
 
     <main>
-      <section class="view active" id="homeView" data-view="home">
-        <div class="hero-row">
-          <div>
+      <section class="view active" data-view="home">
+        <article class="today-hero">
+          <div class="hero-copy">
             <p class="eyebrow" id="todayLabel"></p>
-            <h1>最近都做了些什麼？</h1>
-            <p class="hero-copy" id="homeSummary">每一次完成，都替未來的你留下一個答案。</p>
+            <h1>今天的你，<br>會長成什麼樣子？</h1>
+            <p id="todaySummary">每完成一件事，就替今日小怪物加上一個特徵。</p>
+            <div class="hero-actions"><button class="primary-button" id="quickRecordBtn">＋ 完成一件事</button><button class="soft-button" id="addItemBtn">新增活動</button></div>
           </div>
-          <button class="primary-button" id="addItemBtn"><span>＋</span> 新增事項</button>
-        </div>
+          <div class="monster-stage">
+            <div class="stage-sparkles" aria-hidden="true">✦　·　✧</div>
+            <div id="todayMonster"></div>
+            <div class="monster-caption" id="monsterCaption"></div>
+          </div>
+          <img class="hero-friend" src="assets/pixel-red-panda.png" alt="抱著星星的小熊貓夥伴">
+        </article>
 
-        <div class="controls" id="homeControls">
-          <label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="搜尋事項或分類" autocomplete="off"></label>
-          <select id="sortSelect" aria-label="排序方式">
-            <option value="urgency">需要關注</option>
-            <option value="recent">最近完成</option>
-            <option value="oldest">最久以前</option>
-            <option value="name">名稱</option>
-          </select>
-        </div>
+        <div class="today-counters" id="todayCounters"></div>
 
-        <div class="category-chips" id="categoryChips" aria-label="分類篩選"></div>
+        <div class="section-heading">
+          <div><p class="eyebrow">你的活動</p><h2>上次是什麼時候？</h2></div>
+          <div class="controls"><label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="搜尋活動" autocomplete="off"></label><select id="sortSelect" aria-label="排序方式"><option value="urgency">最久沒做</option><option value="recent">最近完成</option><option value="count">完成最多</option><option value="name">名稱</option></select></div>
+        </div>
+        <div class="type-chips" id="typeChips"></div>
         <div class="item-grid" id="itemGrid"></div>
-
-        <div class="empty-state" id="emptyState" hidden>
-          <div class="empty-orbit"><span>✦</span></div>
-          <h2>還沒有任何紀錄</h2>
-          <p>從一件總是想不起來「上次是什麼時候」的小事開始。</p>
-          <button class="primary-button" id="emptyAddBtn">建立第一個事項</button>
-        </div>
+        <div class="empty-state" id="emptyState" hidden><img src="assets/pixel-sloth.png" alt="樹懶夥伴"><h2>小島還沒有活動</h2><p>先加入一件你會重複做的事，例如畫畫、加班或整理房間。</p><button class="primary-button" id="emptyAddBtn">建立第一個活動</button></div>
       </section>
 
-      <section class="view" id="historyView" data-view="history">
-        <div class="page-heading"><div><p class="eyebrow">所有足跡</p><h1>歷史紀錄</h1></div><button class="secondary-button" id="manualRecordBtn">＋ 補登紀錄</button></div>
+      <section class="view" data-view="history">
+        <div class="page-heading"><div><p class="eyebrow">行動 × 當下心情</p><h1>時光足跡</h1><p>不只知道做過幾次，也記得那一次的自己。</p></div><button class="primary-button" id="manualRecordBtn">＋ 補登一次</button></div>
         <div class="history-list" id="historyList"></div>
       </section>
 
-      <section class="view" id="momentsView" data-view="moments">
-        <div class="moment-hero">
-          <div class="moment-intro">
-            <p class="eyebrow">一行就夠了</p>
-            <h1>此刻，心裡有什麼？</h1>
-            <p>不用替心情打分數。寫下一件剛發生的事，我們會在這個瀏覽器裡替它整理一個顏色與「心芽」。</p>
-          </div>
-          <form class="moment-composer" id="momentForm">
-            <textarea id="momentText" rows="3" maxlength="240" placeholder="例如：下班路上突然聞到雨的味道……" required></textarea>
-            <div class="composer-foot">
-              <label><span>和某件事連在一起</span><select id="momentItem"><option value="">純粹記下這一刻</option></select></label>
-              <span class="char-count" id="momentCount">0 / 240</span>
-              <button class="primary-button" type="submit">留下片刻</button>
-            </div>
-          </form>
+      <section class="view" data-view="collection">
+        <div class="page-heading"><div><p class="eyebrow">每日生成</p><h1>小怪物圖鑑</h1><p>身體來自你做的事情，表情來自當下的心情，配件則由完成數量決定。</p></div></div>
+        <div class="friend-strip">
+          <article><img src="assets/pixel-red-panda.png" alt="小熊貓"><div><strong>小莓</strong><span>喜歡的事情，讓顏色變暖</span></div></article>
+          <article><img src="assets/pixel-panda.png" alt="貓熊"><div><strong>團團</strong><span>工作與完成，長出俐落花紋</span></div></article>
+          <article><img src="assets/pixel-sloth.png" alt="樹懶"><div><strong>慢慢</strong><span>休息與照顧，長出葉子與柔軟耳朵</span></div></article>
         </div>
-        <div id="todayCompanion"></div>
-        <div class="collection-heading"><div><p class="eyebrow">你的心情收藏</p><h2>過去的片刻</h2></div><select id="moodFilter" aria-label="依心情篩選"><option value="全部">全部心情</option></select></div>
-        <div class="moment-grid" id="momentGrid"></div>
+        <div class="daily-grid" id="dailyMonsterGrid"></div>
       </section>
 
-      <section class="view" id="insightsView" data-view="insights">
-        <div class="page-heading"><div><p class="eyebrow">你的節奏</p><h1>間隔報告</h1></div></div>
+      <section class="view" data-view="insights">
+        <div class="page-heading"><div><p class="eyebrow">你把時間放在哪裡</p><h1>生活統計</h1><p>數量不是成績，只是一張更了解自己的地圖。</p></div></div>
         <div class="stat-grid" id="statGrid"></div>
-        <div class="insight-columns">
-          <div class="panel"><div class="panel-heading"><h2>事項節奏</h2><p>依最近的紀錄間隔計算，中位數較不容易被單次異常影響。</p></div><div id="rhythmList" class="rhythm-list"></div></div>
-          <div class="panel"><div class="panel-heading"><h2>心情色譜</h2><p>只根據你寫下的文字，在本機做簡單分類；這不是心理評估。</p></div><div id="moodSpectrum" class="mood-spectrum"></div></div>
+        <div class="insight-grid">
+          <article class="panel"><div class="panel-heading"><h2>近 7 天活動組成</h2><p>喜歡、工作、興趣、照顧與那些不太開心的事情。</p></div><div class="type-chart" id="typeChart"></div></article>
+          <article class="panel"><div class="panel-heading"><h2>當下心情</h2><p>每次完成活動時留下的感受。</p></div><div class="mood-chart" id="moodChart"></div></article>
+          <article class="panel rhythm-panel"><div class="panel-heading"><h2>活動節奏</h2><p>「通常多久做一次」依最近紀錄的中位數計算。</p></div><div class="rhythm-list" id="rhythmList"></div></article>
         </div>
       </section>
 
-      <section class="view" id="settingsView" data-view="settings">
-        <div class="page-heading"><div><p class="eyebrow">你的資料，你作主</p><h1>設定與備份</h1></div></div>
+      <section class="view" data-view="settings">
+        <div class="page-heading"><div><p class="eyebrow">你的島，你作主</p><h1>設定與備份</h1></div></div>
         <div class="settings-grid">
-          <article class="panel setting-card"><span class="setting-icon">⇩</span><div><h2>匯出備份</h2><p>下載一份 JSON，包含所有事項與紀錄。</p></div><button class="secondary-button" id="exportBtn">下載備份</button></article>
-          <article class="panel setting-card"><span class="setting-icon">⇧</span><div><h2>匯入備份</h2><p>從「距今」備份還原；匯入前會再次確認。</p></div><button class="secondary-button" id="importBtn">選擇檔案</button><input id="importFile" type="file" accept="application/json" hidden></article>
-          <article class="panel setting-card"><span class="setting-icon">◐</span><div><h2>外觀</h2><p>跟隨系統，或固定使用亮色與暗色。</p></div><select id="themeSelect"><option value="system">跟隨系統</option><option value="light">亮色</option><option value="dark">暗色</option></select></article>
-          <article class="panel setting-card danger-card"><span class="setting-icon">×</span><div><h2>清除全部資料</h2><p>永久刪除這個瀏覽器裡的所有紀錄。</p></div><button class="danger-button" id="clearBtn">清除資料</button></article>
+          <article class="panel setting-card"><span>⇩</span><div><h2>匯出備份</h2><p>保存活動、次數、心情與小怪物資料。</p></div><button class="soft-button" id="exportBtn">下載 JSON</button></article>
+          <article class="panel setting-card"><span>⇧</span><div><h2>匯入備份</h2><p>用備份取代目前瀏覽器中的資料。</p></div><button class="soft-button" id="importBtn">選擇檔案</button><input id="importFile" type="file" accept="application/json" hidden></article>
+          <article class="panel setting-card"><span>◐</span><div><h2>外觀</h2><p>跟隨系統，或固定亮色與暗色。</p></div><select id="themeSelect"><option value="system">跟隨系統</option><option value="light">亮色</option><option value="dark">暗色</option></select></article>
+          <article class="panel setting-card danger-card"><span>×</span><div><h2>清除全部資料</h2><p>永久清除這個瀏覽器裡的紀錄。</p></div><button class="danger-button" id="clearBtn">清除資料</button></article>
         </div>
-        <p class="privacy-note">所有事項、心情文字與心芽都只保存在這個瀏覽器；本站沒有帳號、廣告、雲端 AI 或分析追蹤。</p>
+        <p class="privacy-note">所有文字與紀錄只存在這個瀏覽器。小怪物由你的活動資料在本機組成，不會把日記傳去外部服務。</p>
       </section>
     </main>
 
     <nav class="bottom-nav" aria-label="主要導覽">
-      <button class="nav-button active" data-target="home"><span>⌂</span><em>首頁</em></button>
-      <button class="nav-button" data-target="history"><span>◴</span><em>歷史</em></button>
-      <button class="nav-button" data-target="moments"><span>✦</span><em>片刻</em></button>
-      <button class="nav-button" data-target="insights"><span>⌁</span><em>報告</em></button>
+      <button class="nav-button active" data-target="home"><span>⌂</span><em>今日</em></button>
+      <button class="nav-button" data-target="history"><span>◷</span><em>足跡</em></button>
+      <button class="nav-button" data-target="collection"><span>♣</span><em>圖鑑</em></button>
+      <button class="nav-button" data-target="insights"><span>▥</span><em>統計</em></button>
       <button class="nav-button" data-target="settings"><span>⚙</span><em>設定</em></button>
     </nav>
   </div>
 
   <dialog id="itemDialog" class="modal">
     <form method="dialog" id="itemForm">
-      <div class="modal-head"><div><p class="eyebrow" id="itemDialogEyebrow">新的記憶</p><h2 id="itemDialogTitle">新增事項</h2></div><button class="icon-button close-modal" value="cancel" aria-label="關閉">×</button></div>
+      <div class="modal-head"><div><p class="eyebrow" id="itemDialogEyebrow">新的活動</p><h2 id="itemDialogTitle">加入小島</h2></div><button class="round-button close-modal" value="cancel" aria-label="關閉">×</button></div>
       <input type="hidden" id="itemId">
-      <label class="field"><span>名稱</span><input id="itemName" maxlength="40" placeholder="例如：更換床單" required></label>
+      <label class="field"><span>活動名稱</span><input id="itemName" maxlength="40" placeholder="例如：畫畫、整理房間" required></label>
       <div class="two-col">
-        <label class="field"><span>分類</span><input id="itemCategory" maxlength="20" placeholder="居家"></label>
-        <label class="field"><span>圖示</span><select id="itemIcon"><option>🧺</option><option>🌿</option><option>☎️</option><option>🩺</option><option>✂️</option><option>🚗</option><option>💊</option><option>🧹</option><option>🐾</option><option>✨</option></select></label>
+        <label class="field"><span>它比較像哪一類？</span><select id="itemType"><option>喜歡</option><option>工作</option><option>興趣</option><option>照顧</option><option>家務</option><option>休息</option><option>不開心</option></select></label>
+        <label class="field"><span>圖示</span><select id="itemIcon"><option>💗</option><option>💼</option><option>🎨</option><option>🌱</option><option>🧺</option><option>☕</option><option>🌧️</option><option>📚</option><option>🏃</option><option>✨</option></select></label>
       </div>
-      <label class="field"><span>希望間隔（天）</span><input id="itemInterval" type="number" min="1" max="3650" value="30"><small>用來判斷何時需要關注，不會強迫你完成。</small></label>
-      <fieldset class="color-picker"><legend>顏色</legend><label><input type="radio" name="color" value="#e88768" checked><span style="--swatch:#e88768"></span></label><label><input type="radio" name="color" value="#6b9d82"><span style="--swatch:#6b9d82"></span></label><label><input type="radio" name="color" value="#6688b5"><span style="--swatch:#6688b5"></span></label><label><input type="radio" name="color" value="#9b78ad"><span style="--swatch:#9b78ad"></span></label><label><input type="radio" name="color" value="#c29a4a"><span style="--swatch:#c29a4a"></span></label></fieldset>
-      <div class="modal-actions"><button type="button" class="danger-link" id="deleteItemBtn" hidden>刪除事項</button><span></span><button value="cancel" class="ghost-button">取消</button><button type="submit" class="primary-button">儲存</button></div>
+      <label class="field"><span>自訂分組（選填）</span><input id="itemCategory" maxlength="20" placeholder="例如：居家、健康"></label>
+      <label class="field"><span>希望間隔（天）</span><input id="itemInterval" type="number" min="1" max="3650" value="7"><small>只用來提醒多久沒做，不會變成待辦壓力。</small></label>
+      <div class="modal-actions"><button type="button" class="danger-link" id="deleteItemBtn" hidden>刪除活動</button><span></span><button value="cancel" class="ghost-button">取消</button><button type="submit" class="primary-button">儲存活動</button></div>
     </form>
   </dialog>
 
-  <dialog id="recordDialog" class="modal">
+  <dialog id="recordDialog" class="modal record-modal">
     <form method="dialog" id="recordForm">
-      <div class="modal-head"><div><p class="eyebrow">補上一個時間點</p><h2>新增紀錄</h2></div><button class="icon-button close-modal" value="cancel" aria-label="關閉">×</button></div>
-      <label class="field"><span>事項</span><select id="recordItem" required></select></label>
+      <div class="modal-head"><div><p class="eyebrow">留下這一次</p><h2>做完時，感覺如何？</h2></div><button class="round-button close-modal" value="cancel" aria-label="關閉">×</button></div>
+      <label class="field"><span>完成的活動</span><select id="recordItem" required></select></label>
+      <div class="mood-picker" role="radiogroup" aria-label="當下心情">
+        <label><input type="radio" name="recordMood" value="開心"><span><b>●ᴗ●</b><small>開心</small></span></label>
+        <label><input type="radio" name="recordMood" value="有成就"><span><b>★ᴗ★</b><small>有成就</small></span></label>
+        <label><input type="radio" name="recordMood" value="平靜"><span><b>─ᴗ─</b><small>平靜</small></span></label>
+        <label><input type="radio" name="recordMood" value="普通" checked><span><b>•ᴗ•</b><small>普通</small></span></label>
+        <label><input type="radio" name="recordMood" value="疲累"><span><b>─︿─</b><small>疲累</small></span></label>
+        <label><input type="radio" name="recordMood" value="不開心"><span><b>•︿•</b><small>不開心</small></span></label>
+      </div>
       <label class="field"><span>日期與時間</span><input id="recordDate" type="datetime-local" required></label>
-      <label class="field"><span>備註（選填）</span><textarea id="recordNote" rows="3" maxlength="300" placeholder="那天有什麼值得記住的？"></textarea></label>
-      <label class="soft-check"><input id="recordAsMoment" type="checkbox" checked><span><strong>同時留下心情片刻</strong><small>有填備註時，會自動生成一顆心芽並放入「片刻」。</small></span></label>
-      <div class="modal-actions"><span></span><button value="cancel" class="ghost-button">取消</button><button type="submit" class="primary-button">加入紀錄</button></div>
+      <label class="field"><span>留一句話（選填）</span><textarea id="recordNote" rows="3" maxlength="240" placeholder="剛剛發生了什麼？"></textarea></label>
+      <div class="modal-actions"><span></span><button value="cancel" class="ghost-button">取消</button><button type="submit" class="primary-button">完成這一次</button></div>
     </form>
   </dialog>
 
-  <dialog id="detailDialog" class="modal detail-modal">
-    <div id="detailContent"></div>
-  </dialog>
-
+  <dialog id="detailDialog" class="modal detail-modal"><div id="detailContent"></div></dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"><span id="toastText"></span><button id="toastAction" hidden>復原</button></div>
   <script src="app.js"></script>
 </body>
