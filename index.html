@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f5f1e8">
-  <meta name="description" content="距今：安靜記住每件事上次發生的時間。">
-  <title>距今｜上次紀錄工具</title>
+  <meta name="description" content="距今：記住事情上次發生的時間，也留下當下的心情。">
+  <title>距今｜時間與心情紀錄</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -14,7 +14,7 @@
     <header class="topbar">
       <div class="brand" aria-label="距今首頁">
         <span class="brand-mark">今</span>
-        <div><strong>距今</strong><small>記住上一次，不安排下一次</small></div>
+        <div><strong>距今</strong><small>記住發生，也留下感受</small></div>
       </div>
       <button class="icon-button" id="themeBtn" aria-label="切換深色模式" title="切換深色模式">☾</button>
     </header>
@@ -56,10 +56,34 @@
         <div class="history-list" id="historyList"></div>
       </section>
 
+      <section class="view" id="momentsView" data-view="moments">
+        <div class="moment-hero">
+          <div class="moment-intro">
+            <p class="eyebrow">一行就夠了</p>
+            <h1>此刻，心裡有什麼？</h1>
+            <p>不用替心情打分數。寫下一件剛發生的事，我們會在這個瀏覽器裡替它整理一個顏色與「心芽」。</p>
+          </div>
+          <form class="moment-composer" id="momentForm">
+            <textarea id="momentText" rows="3" maxlength="240" placeholder="例如：下班路上突然聞到雨的味道……" required></textarea>
+            <div class="composer-foot">
+              <label><span>和某件事連在一起</span><select id="momentItem"><option value="">純粹記下這一刻</option></select></label>
+              <span class="char-count" id="momentCount">0 / 240</span>
+              <button class="primary-button" type="submit">留下片刻</button>
+            </div>
+          </form>
+        </div>
+        <div id="todayCompanion"></div>
+        <div class="collection-heading"><div><p class="eyebrow">你的心情收藏</p><h2>過去的片刻</h2></div><select id="moodFilter" aria-label="依心情篩選"><option value="全部">全部心情</option></select></div>
+        <div class="moment-grid" id="momentGrid"></div>
+      </section>
+
       <section class="view" id="insightsView" data-view="insights">
         <div class="page-heading"><div><p class="eyebrow">你的節奏</p><h1>間隔報告</h1></div></div>
         <div class="stat-grid" id="statGrid"></div>
-        <div class="panel"><div class="panel-heading"><h2>事項節奏</h2><p>依最近的紀錄間隔計算，中位數較不容易被單次異常影響。</p></div><div id="rhythmList" class="rhythm-list"></div></div>
+        <div class="insight-columns">
+          <div class="panel"><div class="panel-heading"><h2>事項節奏</h2><p>依最近的紀錄間隔計算，中位數較不容易被單次異常影響。</p></div><div id="rhythmList" class="rhythm-list"></div></div>
+          <div class="panel"><div class="panel-heading"><h2>心情色譜</h2><p>只根據你寫下的文字，在本機做簡單分類；這不是心理評估。</p></div><div id="moodSpectrum" class="mood-spectrum"></div></div>
+        </div>
       </section>
 
       <section class="view" id="settingsView" data-view="settings">
@@ -70,13 +94,14 @@
           <article class="panel setting-card"><span class="setting-icon">◐</span><div><h2>外觀</h2><p>跟隨系統，或固定使用亮色與暗色。</p></div><select id="themeSelect"><option value="system">跟隨系統</option><option value="light">亮色</option><option value="dark">暗色</option></select></article>
           <article class="panel setting-card danger-card"><span class="setting-icon">×</span><div><h2>清除全部資料</h2><p>永久刪除這個瀏覽器裡的所有紀錄。</p></div><button class="danger-button" id="clearBtn">清除資料</button></article>
         </div>
-        <p class="privacy-note">所有資料只保存在這個瀏覽器的本機儲存空間；本站沒有帳號、廣告或分析追蹤。</p>
+        <p class="privacy-note">所有事項、心情文字與心芽都只保存在這個瀏覽器；本站沒有帳號、廣告、雲端 AI 或分析追蹤。</p>
       </section>
     </main>
 
     <nav class="bottom-nav" aria-label="主要導覽">
       <button class="nav-button active" data-target="home"><span>⌂</span><em>首頁</em></button>
       <button class="nav-button" data-target="history"><span>◴</span><em>歷史</em></button>
+      <button class="nav-button" data-target="moments"><span>✦</span><em>片刻</em></button>
       <button class="nav-button" data-target="insights"><span>⌁</span><em>報告</em></button>
       <button class="nav-button" data-target="settings"><span>⚙</span><em>設定</em></button>
     </nav>
@@ -103,6 +128,7 @@
       <label class="field"><span>事項</span><select id="recordItem" required></select></label>
       <label class="field"><span>日期與時間</span><input id="recordDate" type="datetime-local" required></label>
       <label class="field"><span>備註（選填）</span><textarea id="recordNote" rows="3" maxlength="300" placeholder="那天有什麼值得記住的？"></textarea></label>
+      <label class="soft-check"><input id="recordAsMoment" type="checkbox" checked><span><strong>同時留下心情片刻</strong><small>有填備註時，會自動生成一顆心芽並放入「片刻」。</small></span></label>
       <div class="modal-actions"><span></span><button value="cancel" class="ghost-button">取消</button><button type="submit" class="primary-button">加入紀錄</button></div>
     </form>
   </dialog>

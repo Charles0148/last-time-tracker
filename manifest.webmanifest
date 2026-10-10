@@ -1,7 +1,7 @@
 {
-  "name":"距今｜上次紀錄工具",
+  "name":"距今｜時間與心情紀錄",
   "short_name":"距今",
-  "description":"安靜記住每件事上次發生的時間。",
+  "description":"記住事情上次發生的時間，也留下當下的心情。",
   "start_url":"./",
   "display":"standalone",
   "background_color":"#f5f1e8",
