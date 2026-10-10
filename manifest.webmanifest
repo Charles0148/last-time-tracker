@@ -1,0 +1,11 @@
+{
+  "name":"距今｜上次紀錄工具",
+  "short_name":"距今",
+  "description":"安靜記住每件事上次發生的時間。",
+  "start_url":"./",
+  "display":"standalone",
+  "background_color":"#f5f1e8",
+  "theme_color":"#f5f1e8",
+  "lang":"zh-Hant",
+  "icons":[]
+}

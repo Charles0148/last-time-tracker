@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f5f1e8">
+  <meta name="description" content="距今：安靜記住每件事上次發生的時間。">
+  <title>距今｜上次紀錄工具</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand" aria-label="距今首頁">
+        <span class="brand-mark">今</span>
+        <div><strong>距今</strong><small>記住上一次，不安排下一次</small></div>
+      </div>
+      <button class="icon-button" id="themeBtn" aria-label="切換深色模式" title="切換深色模式">☾</button>
+    </header>
+
+    <main>
+      <section class="view active" id="homeView" data-view="home">
+        <div class="hero-row">
+          <div>
+            <p class="eyebrow" id="todayLabel"></p>
+            <h1>最近都做了些什麼？</h1>
+            <p class="hero-copy" id="homeSummary">每一次完成，都替未來的你留下一個答案。</p>
+          </div>
+          <button class="primary-button" id="addItemBtn"><span>＋</span> 新增事項</button>
+        </div>
+
+        <div class="controls" id="homeControls">
+          <label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="搜尋事項或分類" autocomplete="off"></label>
+          <select id="sortSelect" aria-label="排序方式">
+            <option value="urgency">需要關注</option>
+            <option value="recent">最近完成</option>
+            <option value="oldest">最久以前</option>
+            <option value="name">名稱</option>
+          </select>
+        </div>
+
+        <div class="category-chips" id="categoryChips" aria-label="分類篩選"></div>
+        <div class="item-grid" id="itemGrid"></div>
+
+        <div class="empty-state" id="emptyState" hidden>
+          <div class="empty-orbit"><span>✦</span></div>
+          <h2>還沒有任何紀錄</h2>
+          <p>從一件總是想不起來「上次是什麼時候」的小事開始。</p>
+          <button class="primary-button" id="emptyAddBtn">建立第一個事項</button>
+        </div>
+      </section>
+
+      <section class="view" id="historyView" data-view="history">
+        <div class="page-heading"><div><p class="eyebrow">所有足跡</p><h1>歷史紀錄</h1></div><button class="secondary-button" id="manualRecordBtn">＋ 補登紀錄</button></div>
+        <div class="history-list" id="historyList"></div>
+      </section>
+
+      <section class="view" id="insightsView" data-view="insights">
+        <div class="page-heading"><div><p class="eyebrow">你的節奏</p><h1>間隔報告</h1></div></div>
+        <div class="stat-grid" id="statGrid"></div>
+        <div class="panel"><div class="panel-heading"><h2>事項節奏</h2><p>依最近的紀錄間隔計算，中位數較不容易被單次異常影響。</p></div><div id="rhythmList" class="rhythm-list"></div></div>
+      </section>
+
+      <section class="view" id="settingsView" data-view="settings">
+        <div class="page-heading"><div><p class="eyebrow">你的資料，你作主</p><h1>設定與備份</h1></div></div>
+        <div class="settings-grid">
+          <article class="panel setting-card"><span class="setting-icon">⇩</span><div><h2>匯出備份</h2><p>下載一份 JSON，包含所有事項與紀錄。</p></div><button class="secondary-button" id="exportBtn">下載備份</button></article>
+          <article class="panel setting-card"><span class="setting-icon">⇧</span><div><h2>匯入備份</h2><p>從「距今」備份還原；匯入前會再次確認。</p></div><button class="secondary-button" id="importBtn">選擇檔案</button><input id="importFile" type="file" accept="application/json" hidden></article>
+          <article class="panel setting-card"><span class="setting-icon">◐</span><div><h2>外觀</h2><p>跟隨系統，或固定使用亮色與暗色。</p></div><select id="themeSelect"><option value="system">跟隨系統</option><option value="light">亮色</option><option value="dark">暗色</option></select></article>
+          <article class="panel setting-card danger-card"><span class="setting-icon">×</span><div><h2>清除全部資料</h2><p>永久刪除這個瀏覽器裡的所有紀錄。</p></div><button class="danger-button" id="clearBtn">清除資料</button></article>
+        </div>
+        <p class="privacy-note">所有資料只保存在這個瀏覽器的本機儲存空間；本站沒有帳號、廣告或分析追蹤。</p>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="主要導覽">
+      <button class="nav-button active" data-target="home"><span>⌂</span><em>首頁</em></button>
+      <button class="nav-button" data-target="history"><span>◴</span><em>歷史</em></button>
+      <button class="nav-button" data-target="insights"><span>⌁</span><em>報告</em></button>
+      <button class="nav-button" data-target="settings"><span>⚙</span><em>設定</em></button>
+    </nav>
+  </div>
+
+  <dialog id="itemDialog" class="modal">
+    <form method="dialog" id="itemForm">
+      <div class="modal-head"><div><p class="eyebrow" id="itemDialogEyebrow">新的記憶</p><h2 id="itemDialogTitle">新增事項</h2></div><button class="icon-button close-modal" value="cancel" aria-label="關閉">×</button></div>
+      <input type="hidden" id="itemId">
+      <label class="field"><span>名稱</span><input id="itemName" maxlength="40" placeholder="例如：更換床單" required></label>
+      <div class="two-col">
+        <label class="field"><span>分類</span><input id="itemCategory" maxlength="20" placeholder="居家"></label>
+        <label class="field"><span>圖示</span><select id="itemIcon"><option>🧺</option><option>🌿</option><option>☎️</option><option>🩺</option><option>✂️</option><option>🚗</option><option>💊</option><option>🧹</option><option>🐾</option><option>✨</option></select></label>
+      </div>
+      <label class="field"><span>希望間隔（天）</span><input id="itemInterval" type="number" min="1" max="3650" value="30"><small>用來判斷何時需要關注，不會強迫你完成。</small></label>
+      <fieldset class="color-picker"><legend>顏色</legend><label><input type="radio" name="color" value="#e88768" checked><span style="--swatch:#e88768"></span></label><label><input type="radio" name="color" value="#6b9d82"><span style="--swatch:#6b9d82"></span></label><label><input type="radio" name="color" value="#6688b5"><span style="--swatch:#6688b5"></span></label><label><input type="radio" name="color" value="#9b78ad"><span style="--swatch:#9b78ad"></span></label><label><input type="radio" name="color" value="#c29a4a"><span style="--swatch:#c29a4a"></span></label></fieldset>
+      <div class="modal-actions"><button type="button" class="danger-link" id="deleteItemBtn" hidden>刪除事項</button><span></span><button value="cancel" class="ghost-button">取消</button><button type="submit" class="primary-button">儲存</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="recordDialog" class="modal">
+    <form method="dialog" id="recordForm">
+      <div class="modal-head"><div><p class="eyebrow">補上一個時間點</p><h2>新增紀錄</h2></div><button class="icon-button close-modal" value="cancel" aria-label="關閉">×</button></div>
+      <label class="field"><span>事項</span><select id="recordItem" required></select></label>
+      <label class="field"><span>日期與時間</span><input id="recordDate" type="datetime-local" required></label>
+      <label class="field"><span>備註（選填）</span><textarea id="recordNote" rows="3" maxlength="300" placeholder="那天有什麼值得記住的？"></textarea></label>
+      <div class="modal-actions"><span></span><button value="cancel" class="ghost-button">取消</button><button type="submit" class="primary-button">加入紀錄</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="detailDialog" class="modal detail-modal">
+    <div id="detailContent"></div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"><span id="toastText"></span><button id="toastAction" hidden>復原</button></div>
+  <script src="app.js"></script>
+</body>
+</html>
