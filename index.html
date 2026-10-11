@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#fff7e9">
   <meta name="description" content="距今小島：記錄做過的事與當下心情，讓每一天長成一座住滿動物的小島。">
   <title>距今小島｜行動心情日記</title>
-  <link rel="manifest" href="manifest.webmanifest?v=8">
-  <link rel="stylesheet" href="styles.css?v=8">
+  <link rel="manifest" href="manifest.webmanifest?v=9">
+  <link rel="stylesheet" href="styles.css?v=9">
 </head>
 <body>
   <div class="sky-decor" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -56,7 +56,7 @@
           <article><img src="assets/pixel-otter.png" alt="水獺"><div><strong>成就夥伴</strong><span>水獺或貓熊，替完成的事情頒獎</span></div></article>
           <article><img src="assets/pixel-capybara.png" alt="水豚"><div><strong>平靜夥伴</strong><span>水豚或樹懶，陪你慢慢休息</span></div></article>
         </div>
-        <div class="resident-legend"><span>🐰 喜歡</span><span>🐝 工作</span><span>🦊 興趣</span><span>🐢 照顧</span><span>🐭 家務</span><span>🐌 休息</span><span>🐧 不開心</span></div>
+        <div class="resident-legend" id="residentLegend"></div>
         <div class="archipelago" id="archipelago"></div>
       </section>
 
@@ -102,7 +102,7 @@
         <label class="field"><span>圖示</span><select id="itemIcon"><option>💗</option><option>💼</option><option>🎨</option><option>🌱</option><option>🧺</option><option>☕</option><option>🌧️</option><option>📚</option><option>🏃</option><option>✨</option></select></label>
       </div>
       <label class="field"><span>自訂分組（選填）</span><input id="itemCategory" maxlength="20" placeholder="例如：居家、健康"></label>
-      <label class="field"><span>希望間隔（天）</span><input id="itemInterval" type="number" min="1" max="3650" value="7"><small>只用來提醒多久沒做，不會變成待辦壓力。</small></label>
+      <label class="field"><span>島上的小居民</span><select id="itemResident"><option value="auto">✨ 依活動名稱自動判斷</option></select><small>我們會自動選擇，也可以由你指定；這不會改變活動的主要分類。</small></label>
       <div class="modal-actions"><button type="button" class="danger-link" id="deleteItemBtn" hidden>刪除活動</button><span></span><button value="cancel" class="ghost-button">取消</button><button type="submit" class="primary-button">儲存活動</button></div>
     </form>
   </dialog>
@@ -127,6 +127,6 @@
 
   <dialog id="detailDialog" class="modal detail-modal"><div id="detailContent"></div></dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"><span id="toastText"></span><button id="toastAction" hidden>復原</button></div>
-  <script src="app.js?v=8"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>

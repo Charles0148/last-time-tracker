@@ -1,4 +1,4 @@
-const CACHE='lastnote-v8';
+const CACHE='lastnote-v9';
 const ASSETS=['./','./index.html','./styles.css','./app.js','./manifest.webmanifest','./assets/pixel-red-panda.png','./assets/pixel-panda.png','./assets/pixel-sloth.png','./assets/pixel-cat.png','./assets/pixel-otter.png','./assets/pixel-capybara.png','./assets/pixel-hedgehog.png','./assets/pixel-penguin.png','./assets/outfit-office.png','./assets/outfit-medical.png','./assets/outfit-technology.png','./assets/outfit-education.png','./assets/outfit-creative.png','./assets/outfit-food.png','./assets/outfit-care.png','./assets/outfit-trades.png'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
