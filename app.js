@@ -64,6 +64,14 @@ function dominant(map,fallback){return Object.entries(map).sort((a,b)=>b[1]-a[1]
 function hashString(value){let h=2166136261;for(const c of String(value)){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0}
 const insectKinds=['ladybug','bee','butterfly','grasshopper','firefly','beetle','moth','dragonfly'];
 const moodKeys={'開心':'happy','有成就':'achievement','平靜':'calm','普通':'neutral','疲累':'tired','不開心':'sad'};
+const moodScenes={
+  '開心':{weather:'晴朗花風',expression:'≧▽≦',aura:'♡ ✿ ♡',story:'陽光照著花坡，小動物開心得跳了起來'},
+  '有成就':{weather:'金色晴空',expression:'•̀ᴗ•́ و',aura:'★ ✦ ★',story:'山頂升起旗幟，小動物驕傲地站上觀景台'},
+  '平靜':{weather:'微風薄雲',expression:'－‿－',aura:'～ ❧ ～',story:'溪水緩緩流過，小動物安靜地深呼吸'},
+  '普通':{weather:'柔和多雲',expression:'・ᴗ・',aura:'· ○ ·',story:'雲慢慢飄過，是一座平穩的日常小島'},
+  '疲累':{weather:'暮色起霧',expression:'－_－ zZ',aura:'z Z z',story:'山谷起了霧，小動物靠著樹打起瞌睡'},
+  '不開心':{weather:'雷雨',expression:'╥﹏╥',aura:'☂ ϟ ☂',story:'大雨落在島上，小動物躲進拱門等雨停'}
+};
 function islandMainVisual(spec,className='puzzle-main'){
   if(spec.profession)return`<span class="${className} profession-sprite role-${spec.profession.key}" role="img" aria-label="${spec.mood}、${spec.profession.label}的${spec.profession.mascot}"></span>`;
   return`<img class="${className}" src="${spec.animal.src}" alt="${spec.mood}的${spec.animal.species}${spec.animal.name}">`;
@@ -129,12 +137,14 @@ function renderCollection(){
 }
 
 function openIsland3d(key){
-  const rs=data.records.filter(r=>dateKey(r.at)===key),s=islandSpec(rs,key),date=new Intl.DateTimeFormat('zh-TW',{year:'numeric',month:'long',day:'numeric',weekday:'long'}).format(new Date(`${key}T12:00:00`));
+  const rs=data.records.filter(r=>dateKey(r.at)===key),s=islandSpec(rs,key),moodKey=moodKeys[s.mood],scene=moodScenes[s.mood],date=new Intl.DateTimeFormat('zh-TW',{year:'numeric',month:'long',day:'numeric',weekday:'long'}).format(new Date(`${key}T12:00:00`));
   islandTurn=0;
-  $('#island3dTitle').textContent=date;$('#island3dSummary').textContent=`${rs.length} 件事 · ${rs.length} 隻昆蟲 · 心情 ${s.mood}${s.profession?` · 工作總合 ${s.profession.label}`:''}`;
-  $('#island3dWorld').className=`island-3d-world mood-${moodKeys[s.mood]}`;
+  $('#island3dTitle').textContent=date;$('#island3dSummary').textContent=`${rs.length} 件事 · ${rs.length} 隻昆蟲 · ${scene.weather} · ${scene.story}${s.profession?` · ${s.profession.label}`:''}`;
+  $('#island3dScene').className=`island-3d-scene scene-${moodKey}`;
+  $('#islandWeather').innerHTML=`<span class="weather-sun"></span><span class="weather-cloud cloud-a">☁</span><span class="weather-cloud cloud-b">☁</span><span class="weather-lightning">ϟ</span><span class="weather-rain"></span>`;
+  $('#island3dWorld').className=`island-3d-world mood-${moodKey}`;
   setIslandTurn(0,false);
-  $('#island3dWorld').innerHTML=`<div class="mv-shadow"></div><div class="mv-island"><span class="mv-island-top"></span><span class="mv-island-front"></span><span class="mv-island-side"></span></div><div class="mv-monuments"><span class="mv-block mv-tower-a"></span><span class="mv-block mv-tower-b"></span><span class="mv-bridge"></span><span class="mv-arch"><i></i></span><span class="mv-stairs">${'<i></i>'.repeat(6)}</span></div><div class="island-3d-bugs">${insectHtml(rs.length,key,'three-d')}</div><div class="island-3d-main">${islandMainVisual(s,'island-3d-character')}<span>${moodDefs[s.mood].icon}</span></div>`;
+  $('#island3dWorld').innerHTML=`<div class="mv-shadow"></div><div class="mv-island"><span class="mv-island-top"></span><span class="mv-island-front"></span><span class="mv-island-side"></span><span class="mv-waterfall"></span></div><div class="mv-landscape"><span class="mv-stream"></span><span class="mv-pond"></span><span class="mv-hill hill-a"></span><span class="mv-hill hill-b"></span><span class="mv-mountain mountain-a"><i></i></span><span class="mv-mountain mountain-b"><i></i></span><span class="mv-tree tree-a">♣</span><span class="mv-tree tree-b">♣</span><span class="mv-flower-field">✿ · ✿ · ✿</span></div><div class="mv-monuments"><span class="mv-block mv-tower-a"><i class="mv-flag">⚑</i></span><span class="mv-block mv-tower-b"></span><span class="mv-bridge"></span><span class="mv-arch"><i></i></span><span class="mv-stairs">${'<i></i>'.repeat(6)}</span></div><div class="island-3d-bugs">${insectHtml(rs.length,key,'three-d')}</div><div class="island-3d-main character-mood-${moodKey}">${islandMainVisual(s,'island-3d-character')}<span class="mood-aura">${scene.aura}</span><span class="animal-expression" aria-label="${s.mood}的表情">${scene.expression}</span></div>`;
   $('#island3dDialog').showModal();
 }
 
@@ -183,5 +193,5 @@ $('#island3dScene').addEventListener('pointercancel',e=>{islandDrag=null;e.curre
 $('#island3dScene').addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight'].includes(e.key))return;e.preventDefault();setIslandTurn(Math.round(islandTurn/90)*90+(e.key==='ArrowLeft'?-90:90))});
 $('#turnIslandLeft').onclick=()=>setIslandTurn(Math.round(islandTurn/90)*90-90);
 $('#turnIslandRight').onclick=()=>setIslandTurn(Math.round(islandTurn/90)*90+90);
-if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js?v=12',{updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{});
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js?v=13',{updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{});
 renderAll();
