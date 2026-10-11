@@ -15,7 +15,17 @@ const animalDefs={
 };
 const moodAnimals={'開心':['redPanda','cat'],'有成就':['otter','panda'],'平靜':['capybara','sloth'],'普通':['cat','capybara'],'疲累':['hedgehog','sloth'],'不開心':['penguin','sloth']};
 const residentAnimals={'喜歡':'🐰','工作':'🐝','興趣':'🦊','照顧':'🐢','家務':'🐭','休息':'🐌','不開心':'🐧'};
-const defaultData={version:3,items:[],records:[],moments:[],settings:{theme:'system'}};
+const professionDefs={
+  office:{label:'辦公行政',icon:'📋',src:'assets/outfit-office.png',keywords:/報告|會議|簡報|文書|行政|業務|財務|會計|管理|企劃|提案|合約|office|sales/i},
+  medical:{label:'醫療照護',icon:'🩺',src:'assets/outfit-medical.png',keywords:/醫|護理|病人|藥|診|手術|復健|治療|心理|醫院|clinic|patient/i},
+  technology:{label:'科技開發',icon:'💻',src:'assets/outfit-technology.png',keywords:/程式|開發|軟體|網站|app|debug|api|資料庫|伺服器|工程師|前端|後端|code|coding|deploy/i},
+  education:{label:'教育研究',icon:'📚',src:'assets/outfit-education.png',keywords:/教學|老師|學生|課程|備課|批改|講義|研究|論文|實驗|學校|teacher|research/i},
+  creative:{label:'創作設計',icon:'🎨',src:'assets/outfit-creative.png',keywords:/設計|畫|剪輯|拍攝|寫作|文案|音樂|攝影|插畫|動畫|美術|ui|ux|creative/i},
+  food:{label:'餐飲烘焙',icon:'🍳',src:'assets/outfit-food.png',keywords:/料理|廚|烹飪|餐廳|烘焙|咖啡|飲料|備料|甜點|外場|chef|cook/i},
+  care:{label:'照顧服務',icon:'🤝',src:'assets/outfit-care.png',keywords:/照顧|社工|幼兒|清潔|客服|服務|美容|陪伴|接待|諮詢|care|service/i},
+  trades:{label:'工程技職',icon:'🦺',src:'assets/outfit-trades.png',keywords:/工地|維修|製造|機械|電工|水電|施工|搬運|倉庫|運輸|建築|設備|修理|technician/i}
+};
+const defaultData={version:4,items:[],records:[],moments:[],settings:{theme:'system',professionMode:'auto'}};
 let data=loadData(),activeType='全部',toastTimer,undoRecord=null;
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
@@ -23,7 +33,7 @@ const uid=()=>crypto.randomUUID?.()||`${Date.now()}-${Math.random().toString(16)
 
 function inferType(item){const s=`${item.type||''} ${item.category||''} ${item.name||''}`;if(typeDefs[item.type])return item.type;if(/工作|上班|會議|加班|報告/.test(s))return'工作';if(/畫|閱讀|遊戲|攝影|音樂|興趣/.test(s))return'興趣';if(/照顧|健康|運動|醫|寵物|植物/.test(s))return'照顧';if(/家|清潔|整理|洗|打掃/.test(s))return'家務';if(/休息|睡|放空|咖啡/.test(s))return'休息';if(/不開心|壓力|討厭/.test(s))return'不開心';return'喜歡'}
 function normalizeMood(m){if(moodDefs[m])return m;if(/明亮|快樂|開心/.test(m||''))return'開心';if(/安定|平靜/.test(m||''))return'平靜';if(/有勁|成就/.test(m||''))return'有成就';if(/低潮|不開心/.test(m||''))return'不開心';if(/緊繃|疲/.test(m||''))return'疲累';return'普通'}
-function loadData(){try{const v=JSON.parse(localStorage.getItem(STORAGE_KEY));if(!v||!Array.isArray(v.items)||!Array.isArray(v.records))throw Error();const merged={...structuredClone(defaultData),...v,version:3,moments:Array.isArray(v.moments)?v.moments:[],settings:{...defaultData.settings,...v.settings}};merged.items=merged.items.map(i=>({...i,type:inferType(i)}));merged.records=merged.records.map(r=>({...r,mood:normalizeMood(r.mood||merged.moments.find(m=>m.id===r.momentId)?.mood)}));return merged}catch{return structuredClone(defaultData)}}
+function loadData(){try{const v=JSON.parse(localStorage.getItem(STORAGE_KEY));if(!v||!Array.isArray(v.items)||!Array.isArray(v.records))throw Error();const merged={...structuredClone(defaultData),...v,version:4,moments:Array.isArray(v.moments)?v.moments:[],settings:{...defaultData.settings,...v.settings}};merged.items=merged.items.map(i=>({...i,type:inferType(i)}));merged.records=merged.records.map(r=>({...r,mood:normalizeMood(r.mood||merged.moments.find(m=>m.id===r.momentId)?.mood)}));return merged}catch{return structuredClone(defaultData)}}
 function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(data));renderAll()}
 function recordsFor(id){return data.records.filter(r=>r.itemId===id).sort((a,b)=>new Date(b.at)-new Date(a.at))}
 function lastRecord(item){return recordsFor(item.id)[0]||null}
@@ -40,26 +50,38 @@ function countMap(values){return values.reduce((a,x)=>(a[x]=(a[x]||0)+1,a),{})}
 function dominant(map,fallback){return Object.entries(map).sort((a,b)=>b[1]-a[1])[0]?.[0]||fallback}
 
 function hashString(value){let h=2166136261;for(const c of String(value)){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0}
+function professionFor(records){
+  const mode=data.settings.professionMode||'auto';
+  if(mode==='none')return null;
+  if(mode!=='auto'&&professionDefs[mode])return{key:mode,...professionDefs[mode],reason:'由你指定的職業服'};
+  const workRows=records.map(r=>({r,item:data.items.find(i=>i.id===r.itemId)})).filter(x=>x.item?.type==='工作');
+  if(!workRows.length)return null;
+  const scores={},evidence={};
+  for(const {r,item} of workRows){const text=`${item.name||''} ${item.category||''} ${r.note||''}`;for(const [key,def] of Object.entries(professionDefs)){if(def.keywords.test(text)){scores[key]=(scores[key]||0)+1;evidence[key]??=item.name}}}
+  const key=dominant(scores,'office'),def=professionDefs[key];
+  return{key,...def,reason:evidence[key]?`從「${evidence[key]}」判斷`:`今天有 ${workRows.length} 筆工作紀錄`};
+}
 function islandSpec(records,key=dateKey(new Date())){
   const moods=countMap(records.map(r=>normalizeMood(r.mood))),mood=dominant(moods,'普通'),choices=moodAnimals[mood];
   const animalKey=choices[hashString(`${key}-${records.length}`)%choices.length],animal=animalDefs[animalKey];
   const residents=records.map(r=>{const type=data.items.find(i=>i.id===r.itemId)?.type||'喜歡';return{type,emoji:residentAnimals[type]||'🐰'}});
-  return{count:records.length,mood,animal,residents,decor:records.length===0?'':records.length<3?'🌱':records.length<6?'🌼':records.length<9?'🌳':'🚩'};
+  return{count:records.length,mood,animal,residents,profession:professionFor(records),decor:records.length===0?'':records.length<3?'🌱':records.length<6?'🌼':records.length<9?'🌳':'🚩'};
 }
 function islandHtml(records,key,mini=false){
   const s=islandSpec(records,key),visible=s.residents.slice(0,12),more=s.count-visible.length;
   const residents=visible.map((r,i)=>`<span class="island-resident resident-${i+1}" title="${r.type}" aria-label="${r.type}居民">${r.emoji}</span>`).join('');
-  const main=s.count?`<img class="island-main-animal" src="${s.animal.src}" alt="今日主角${s.animal.species}${s.animal.name}">`:`<span class="island-egg" aria-label="等待第一件事的蛋">🥚</span>`;
-  return`<div class="daily-island ${mini?'mini-island':''}" aria-label="${s.count} 件事組成的小島，主角是${s.animal.species}"><span class="island-cloud">☁</span><div class="island-water"></div><div class="island-soil"></div><div class="island-grass"></div><span class="island-decor">${s.decor}</span>${main}<div class="island-residents">${residents}${more?`<span class="resident-more">+${more}</span>`:''}</div></div>`;
+  const outfit=s.profession?`<img class="island-outfit" src="${s.profession.src}" alt="${s.profession.label}職業服">`:'';
+  const main=s.count?`<div class="island-main-stack"><img class="island-main-animal" src="${s.animal.src}" alt="今日主角${s.animal.species}${s.animal.name}">${outfit}</div>`:`<span class="island-egg" aria-label="等待第一件事的蛋">🥚</span>`;
+  return`<div class="daily-island ${mini?'mini-island':''}" aria-label="${s.count} 件事組成的小島，主角是${s.animal.species}${s.profession?`，穿著${s.profession.label}服裝`:''}"><span class="island-cloud">☁</span><div class="island-water"></div><div class="island-soil"></div><div class="island-grass"></div><span class="island-decor">${s.decor}</span>${main}<div class="island-residents">${residents}${more?`<span class="resident-more">+${more}</span>`:''}</div></div>`;
 }
 
 function applyTheme(){const mode=data.settings.theme||'system',dark=mode==='dark'||(mode==='system'&&matchMedia('(prefers-color-scheme:dark)').matches);document.documentElement.dataset.theme=dark?'dark':'light';$('#themeBtn').textContent=dark?'☀':'☾';$('#themeSelect').value=mode}
-function renderAll(){applyTheme();renderHome();renderHistory();renderCollection();renderInsights();populateRecordItems()}
+function renderAll(){applyTheme();renderHome();renderHistory();renderCollection();renderInsights();renderSettings();populateRecordItems()}
 function renderHome(){
   const today=data.records.filter(r=>sameDay(r.at)),key=dateKey(new Date()),spec=islandSpec(today,key),typeCounts=countMap(today.map(r=>data.items.find(i=>i.id===r.itemId)?.type||'喜歡'));
   $('#todayLabel').textContent=new Intl.DateTimeFormat('zh-TW',{month:'long',day:'numeric',weekday:'long'}).format(new Date());
-  $('#todaySummary').textContent=today.length?`今天完成了 ${today.length} 件事，島上已住進 ${today.length} 位小居民；主要心情是「${spec.mood}」。`:'今天還沒有紀錄。做完第一件事，主角動物就會帶著一位小居民登島。';
-  $('#todayIsland').innerHTML=islandHtml(today,key);$('#islandCaption').textContent=today.length?`主角：${spec.animal.name}（${spec.mood}） · ${today.length} 位小居民`:'等待第一位居民登島';
+  $('#todaySummary').textContent=today.length?`今天完成了 ${today.length} 件事，島上已住進 ${today.length} 位小居民；主要心情是「${spec.mood}」${spec.profession?`，今天像一位${spec.profession.label}工作者`:''}。`:'今天還沒有紀錄。做完第一件事，主角動物就會帶著一位小居民登島。';
+  $('#todayIsland').innerHTML=islandHtml(today,key);$('#islandCaption').textContent=today.length?`主角：${spec.animal.name}（${spec.mood}）${spec.profession?` · ${spec.profession.icon} ${spec.profession.label}`:''} · ${today.length} 位小居民`:'等待第一位居民登島';
   const counters=[['今日完成',today.length,'✨','#f6d887'],['喜歡',typeCounts['喜歡']||0,'💗','#f8c6cc'],['工作',typeCounts['工作']||0,'💼','#b9dce2'],['興趣',typeCounts['興趣']||0,'🎨','#d8cbed']];
   $('#todayCounters').innerHTML=counters.map(([label,n,icon,tone])=>`<article class="counter-card" style="--tone:${tone}"><i>${icon}</i><div><strong>${n}</strong><span>${label}</span></div></article>`).join('');
   const types=['全部',...Object.keys(typeDefs)];if(!types.includes(activeType))activeType='全部';$('#typeChips').innerHTML=types.map(t=>`<button class="chip ${t===activeType?'active':''}" data-type="${t}">${t==='全部'?'全部':`${typeDefs[t].icon} ${t}`}</button>`).join('');
@@ -70,7 +92,14 @@ function itemCard(i){const r=lastRecord(i),e=elapsed(r?.at),days=r?daysSince(r.a
 
 function renderHistory(){const list=[...data.records].sort((a,b)=>new Date(b.at)-new Date(a.at));if(!list.length){$('#historyList').innerHTML='<div class="empty-state"><img src="assets/pixel-panda.png" alt="貓熊夥伴"><h2>還沒有足跡</h2><p>完成活動時，次數、距離與當下心情會一起留在這裡。</p></div>';return}const groups={};for(const r of list)(groups[dateKey(r.at)]??=[]).push(r);$('#historyList').innerHTML=Object.entries(groups).map(([key,rs])=>`<section class="history-group"><div class="history-date">${new Intl.DateTimeFormat('zh-TW',{year:'numeric',month:'long',day:'numeric',weekday:'short'}).format(new Date(`${key}T12:00:00`))}</div>${rs.map(r=>{const i=data.items.find(x=>x.id===r.itemId);if(!i)return'';const def=typeDefs[i.type]||typeDefs['喜歡'];return`<article class="history-entry"><div class="item-icon" style="--tone:${def.color}">${esc(i.icon)}</div><div class="history-main"><strong>${esc(i.name)} <span class="mood-badge">${moodDefs[normalizeMood(r.mood)].icon} ${normalizeMood(r.mood)}</span></strong><small>${esc(r.note||`${i.type}的一次紀錄`)}</small></div><time class="history-time">${displayDate(r.at)}</time><button class="delete-record" data-delete-record="${r.id}" aria-label="刪除紀錄">×</button></article>`}).join('')}</section>`).join('')}
 
-function renderCollection(){const groups={};for(const r of data.records)(groups[dateKey(r.at)]??=[]).push(r);const entries=Object.entries(groups).sort((a,b)=>b[0].localeCompare(a[0]));$('#archipelago').innerHTML=entries.length?entries.map(([key,rs],index)=>{const s=islandSpec(rs,key);return`<article class="island-card" style="--i:${index}">${islandHtml(rs,key,true)}<div class="island-card-copy"><h3>${new Intl.DateTimeFormat('zh-TW',{month:'short',day:'numeric',weekday:'short'}).format(new Date(`${key}T12:00:00`))}</h3><p>${s.animal.species}${s.animal.name} · ${s.mood}</p><strong>${rs.length} 位小居民</strong></div></article>`}).join(''):'<div class="empty-state" style="grid-column:1/-1"><img src="assets/pixel-red-panda.png" alt="小熊貓夥伴"><h2>群島還在等你</h2><p>完成第一件事，今天就會長出一座有主角與小居民的島。</p></div>'}
+function renderCollection(){const groups={};for(const r of data.records)(groups[dateKey(r.at)]??=[]).push(r);const entries=Object.entries(groups).sort((a,b)=>b[0].localeCompare(a[0]));$('#archipelago').innerHTML=entries.length?entries.map(([key,rs],index)=>{const s=islandSpec(rs,key);return`<article class="island-card" style="--i:${index}">${islandHtml(rs,key,true)}<div class="island-card-copy"><h3>${new Intl.DateTimeFormat('zh-TW',{month:'short',day:'numeric',weekday:'short'}).format(new Date(`${key}T12:00:00`))}</h3><p>${s.animal.species}${s.animal.name} · ${s.mood}${s.profession?` · ${s.profession.icon}${s.profession.label}`:''}</p><strong>${rs.length} 位小居民</strong></div></article>`}).join(''):'<div class="empty-state" style="grid-column:1/-1"><img src="assets/pixel-red-panda.png" alt="小熊貓夥伴"><h2>群島還在等你</h2><p>完成第一件事，今天就會長出一座有主角與小居民的島。</p></div>'}
+
+function renderSettings(){
+  const mode=data.settings.professionMode||'auto',today=data.records.filter(r=>sameDay(r.at)),detected=professionFor(today);
+  $('#professionSelect').value=mode;
+  $('#professionSettingHint').textContent=mode==='none'?'職業服裝已關閉，主角會保留原本模樣。':mode==='auto'?(detected?`已偵測：${detected.icon} ${detected.label}，${detected.reason}。判斷只在這個瀏覽器進行。`:'今天還沒有「工作」類紀錄；完成工作後就會自動換裝。'):`目前固定穿著：${professionDefs[mode].icon} ${professionDefs[mode].label}。`;
+  $('#wardrobePreview').innerHTML=Object.entries(professionDefs).map(([key,def])=>`<button type="button" class="wardrobe-option ${mode===key||mode==='auto'&&detected?.key===key?'active':''}" data-profession-pick="${key}" title="選擇${def.label}"><img src="${def.src}" alt="${def.label}服裝"><span>${def.icon} ${def.label}</span></button>`).join('');
+}
 
 function renderInsights(){
   const now=new Date(),weekAgo=new Date(Date.now()-6*864e5);weekAgo.setHours(0,0,0,0);const recent=data.records.filter(r=>new Date(r.at)>=weekAgo),today=data.records.filter(r=>sameDay(r.at));
@@ -91,13 +120,13 @@ function switchView(target){$$('.view').forEach(v=>v.classList.toggle('active',v
 $('#itemForm').addEventListener('submit',e=>{e.preventDefault();const id=$('#itemId').value,item={id:id||uid(),name:$('#itemName').value.trim(),type:$('#itemType').value,icon:$('#itemIcon').value,category:$('#itemCategory').value.trim(),interval:Number($('#itemInterval').value)||7,createdAt:new Date().toISOString()};if(id){const old=data.items.find(i=>i.id===id);Object.assign(old,item,{createdAt:old.createdAt})}else data.items.push(item);$('#itemDialog').close();save();showToast(id?'活動已更新':'活動已加入小島')});
 $('#recordForm').addEventListener('submit',e=>{e.preventDefault();const rec={id:uid(),itemId:$('#recordItem').value,at:new Date($('#recordDate').value).toISOString(),mood:$('input[name="recordMood"]:checked').value,note:$('#recordNote').value.trim()};data.records.push(rec);undoRecord=rec;$('#recordDialog').close();save();showToast('一位小居民住進今天的島了','復原')});
 $('#deleteItemBtn').onclick=()=>{const id=$('#itemId').value;if(confirm('刪除這個活動和它的全部紀錄？過去每天的小島也會跟著改變。')){data.items=data.items.filter(i=>i.id!==id);data.records=data.records.filter(r=>r.itemId!==id);$('#itemDialog').close();save();showToast('活動已刪除')}};
-document.addEventListener('click',e=>{const b=e.target.closest('button');if(b){if(b.matches('[data-log]'))openRecord(b.dataset.log);else if(b.matches('[data-edit]'))openItem(data.items.find(i=>i.id===b.dataset.edit));else if(b.matches('[data-delete-record]')){if(confirm('刪除這次紀錄？當天的小島會重新生成。')){data.records=data.records.filter(r=>r.id!==b.dataset.deleteRecord);if($('#detailDialog').open)$('#detailDialog').close();save();showToast('紀錄已刪除')}}else if(b.matches('[data-close-detail]'))$('#detailDialog').close();else if(b.matches('[data-detail-log]')){$('#detailDialog').close();openRecord(b.dataset.detailLog)}else if(b.matches('[data-detail-edit]')){$('#detailDialog').close();openItem(data.items.find(i=>i.id===b.dataset.detailEdit))}else if(b.matches('[data-type]')){activeType=b.dataset.type;renderHome()}else if(b.matches('.nav-button'))switchView(b.dataset.target);else if(b.matches('[data-go]'))switchView(b.dataset.go);return}const card=e.target.closest('[data-item-card]');if(card)openDetail(data.items.find(i=>i.id===card.dataset.itemCard))});
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(b){if(b.matches('[data-log]'))openRecord(b.dataset.log);else if(b.matches('[data-edit]'))openItem(data.items.find(i=>i.id===b.dataset.edit));else if(b.matches('[data-delete-record]')){if(confirm('刪除這次紀錄？當天的小島會重新生成。')){data.records=data.records.filter(r=>r.id!==b.dataset.deleteRecord);if($('#detailDialog').open)$('#detailDialog').close();save();showToast('紀錄已刪除')}}else if(b.matches('[data-close-detail]'))$('#detailDialog').close();else if(b.matches('[data-detail-log]')){$('#detailDialog').close();openRecord(b.dataset.detailLog)}else if(b.matches('[data-detail-edit]')){$('#detailDialog').close();openItem(data.items.find(i=>i.id===b.dataset.detailEdit))}else if(b.matches('[data-type]')){activeType=b.dataset.type;renderHome()}else if(b.matches('[data-profession-pick]')){data.settings.professionMode=b.dataset.professionPick;save();showToast(`已換上${professionDefs[b.dataset.professionPick].label}服裝`)}else if(b.matches('.nav-button'))switchView(b.dataset.target);else if(b.matches('[data-go]'))switchView(b.dataset.go);return}const card=e.target.closest('[data-item-card]');if(card)openDetail(data.items.find(i=>i.id===card.dataset.itemCard))});
 $('#addItemBtn').onclick=$('#emptyAddBtn').onclick=()=>openItem();$('#quickRecordBtn').onclick=()=>openRecord();$('#manualRecordBtn').onclick=()=>openRecord();$('#searchInput').oninput=renderHome;$('#sortSelect').onchange=renderHome;
-$('#themeBtn').onclick=()=>{data.settings.theme=document.documentElement.dataset.theme==='dark'?'light':'dark';save()};$('#themeSelect').onchange=e=>{data.settings.theme=e.target.value;save()};matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{if(data.settings.theme==='system')applyTheme()});
+$('#themeBtn').onclick=()=>{data.settings.theme=document.documentElement.dataset.theme==='dark'?'light':'dark';save()};$('#themeSelect').onchange=e=>{data.settings.theme=e.target.value;save()};$('#professionSelect').onchange=e=>{data.settings.professionMode=e.target.value;save();showToast(e.target.value==='auto'?'已開啟自動職業換裝':e.target.value==='none'?'職業服裝已關閉':`已換上${professionDefs[e.target.value].label}服裝`)};matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{if(data.settings.theme==='system')applyTheme()});
 $('#toastAction').onclick=()=>{if(undoRecord){data.records=data.records.filter(r=>r.id!==undoRecord.id);undoRecord=null;save();$('#toast').classList.remove('show')}};
 $('#exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({...data,exportedAt:new Date().toISOString()},null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`距今小島備份-${dateKey(new Date())}.json`;a.click();URL.revokeObjectURL(a.href);showToast('備份已下載')};
-$('#importBtn').onclick=()=>$('#importFile').click();$('#importFile').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const incoming=JSON.parse(await file.text());if(!Array.isArray(incoming.items)||!Array.isArray(incoming.records))throw Error();if(confirm(`匯入 ${incoming.items.length} 個活動與 ${incoming.records.length} 次紀錄，並取代目前資料？`)){data={...structuredClone(defaultData),...incoming,version:3,moments:Array.isArray(incoming.moments)?incoming.moments:[],settings:{...defaultData.settings,...incoming.settings}};data.items=data.items.map(i=>({...i,type:inferType(i)}));data.records=data.records.map(r=>({...r,mood:normalizeMood(r.mood)}));save();showToast('小島備份已還原')}}catch{alert('這不是有效的「距今小島」備份。')}e.target.value=''};
+$('#importBtn').onclick=()=>$('#importFile').click();$('#importFile').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const incoming=JSON.parse(await file.text());if(!Array.isArray(incoming.items)||!Array.isArray(incoming.records))throw Error();if(confirm(`匯入 ${incoming.items.length} 個活動與 ${incoming.records.length} 次紀錄，並取代目前資料？`)){data={...structuredClone(defaultData),...incoming,version:4,moments:Array.isArray(incoming.moments)?incoming.moments:[],settings:{...defaultData.settings,...incoming.settings}};data.items=data.items.map(i=>({...i,type:inferType(i)}));data.records=data.records.map(r=>({...r,mood:normalizeMood(r.mood)}));save();showToast('小島備份已還原')}}catch{alert('這不是有效的「距今小島」備份。')}e.target.value=''};
 $('#clearBtn').onclick=()=>{if(confirm('永久清除所有活動、次數、心情和每日小島？此動作無法復原。')){data=structuredClone(defaultData);localStorage.removeItem(STORAGE_KEY);renderAll();showToast('小島已清空')}};
 $$('.close-modal').forEach(b=>b.addEventListener('click',e=>e.currentTarget.closest('dialog').close()));
-if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js?v=6',{updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{});
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js?v=8',{updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{});
 renderAll();
