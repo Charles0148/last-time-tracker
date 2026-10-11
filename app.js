@@ -144,7 +144,8 @@ function openIsland3d(key){
   $('#islandWeather').innerHTML=`<span class="weather-sun"></span><span class="weather-cloud cloud-a">☁</span><span class="weather-cloud cloud-b">☁</span><span class="weather-lightning">ϟ</span><span class="weather-rain"></span>`;
   $('#island3dWorld').className=`island-3d-world mood-${moodKey}`;
   setIslandTurn(0,false);
-  $('#island3dWorld').innerHTML=`<div class="mv-shadow"></div><div class="mv-island"><span class="mv-island-top"></span><span class="mv-island-front"></span><span class="mv-island-side"></span><span class="mv-waterfall"></span></div><div class="mv-landscape"><span class="mv-stream"></span><span class="mv-pond"></span><span class="mv-hill hill-a"></span><span class="mv-hill hill-b"></span><span class="mv-mountain mountain-a"><i></i></span><span class="mv-mountain mountain-b"><i></i></span><span class="mv-tree tree-a">♣</span><span class="mv-tree tree-b">♣</span><span class="mv-flower-field">✿ · ✿ · ✿</span></div><div class="mv-monuments"><span class="mv-block mv-tower-a"><i class="mv-flag">⚑</i></span><span class="mv-block mv-tower-b"></span><span class="mv-bridge"></span><span class="mv-arch"><i></i></span><span class="mv-stairs">${'<i></i>'.repeat(6)}</span></div><div class="island-3d-bugs">${insectHtml(rs.length,key,'three-d')}</div><div class="island-3d-main character-mood-${moodKey}">${islandMainVisual(s,'island-3d-character')}<span class="mood-aura">${scene.aura}</span><span class="animal-expression" aria-label="${s.mood}的表情">${scene.expression}</span></div>`;
+  const realIsland={mood:s.mood,moodKey,count:rs.length,key,professionKey:s.profession?.key||'',professionLabel:s.profession?.label||''};
+  if(window.realIsland3d)window.realIsland3d.open(realIsland);else window.pendingIsland3d=realIsland;
   $('#island3dDialog').showModal();
 }
 
@@ -184,7 +185,7 @@ $('#importBtn').onclick=()=>$('#importFile').click();$('#importFile').onchange=a
 $('#clearBtn').onclick=()=>{if(confirm('永久清除所有活動、次數、心情和每日小島？此動作無法復原。')){data=structuredClone(defaultData);localStorage.removeItem(STORAGE_KEY);renderAll();showToast('小島已清空')}};
 $$('.close-modal').forEach(b=>b.addEventListener('click',e=>e.currentTarget.closest('dialog').close()));
 let islandDrag=null,islandTurn=0;
-function setIslandTurn(next,animate=true){islandTurn=next;const world=$('#island3dWorld');world.classList.toggle('turning',animate);world.style.setProperty('--turn',`${islandTurn}deg`);world.style.setProperty('--counter',`${-(45+islandTurn)}deg`)}
+function setIslandTurn(next,animate=true){islandTurn=next;window.realIsland3d?.setTurn(islandTurn);const world=$('#island3dWorld');world.classList.toggle('turning',animate);world.style.setProperty('--turn',`${islandTurn}deg`);world.style.setProperty('--counter',`${-(45+islandTurn)}deg`)}
 function snapIslandTurn(){setIslandTurn(Math.round(islandTurn/90)*90)}
 $('#island3dScene').addEventListener('pointerdown',e=>{islandDrag={x:e.clientX,start:islandTurn};e.currentTarget.setPointerCapture(e.pointerId);e.currentTarget.classList.add('dragging')});
 $('#island3dScene').addEventListener('pointermove',e=>{if(!islandDrag)return;setIslandTurn(islandDrag.start+(e.clientX-islandDrag.x)*.7,false)});
@@ -193,5 +194,5 @@ $('#island3dScene').addEventListener('pointercancel',e=>{islandDrag=null;e.curre
 $('#island3dScene').addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight'].includes(e.key))return;e.preventDefault();setIslandTurn(Math.round(islandTurn/90)*90+(e.key==='ArrowLeft'?-90:90))});
 $('#turnIslandLeft').onclick=()=>setIslandTurn(Math.round(islandTurn/90)*90-90);
 $('#turnIslandRight').onclick=()=>setIslandTurn(Math.round(islandTurn/90)*90+90);
-if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js?v=13',{updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{});
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js?v=15',{updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{});
 renderAll();

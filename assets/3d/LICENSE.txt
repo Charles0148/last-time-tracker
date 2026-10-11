@@ -1,0 +1,6 @@
+Gobkit free animal and environment models
+Source: https://gobkit.com/api/free
+License: CC0 1.0 Universal (public domain)
+Files used: Corgi, Duck, Hippo, Marmot, Owl, Seal, Mountain001, TreeLow001, TreeHigh001, Rock001, Bush001.
+
+The models may be used for personal and commercial projects without attribution.
