@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#fff7e9">
-  <meta name="description" content="距今小島：記錄做過的事、當下心情，孵化每天獨一無二的小怪物。">
+  <meta name="description" content="距今小島：記錄做過的事與當下心情，讓每一天長成一座住滿動物的小島。">
   <title>距今小島｜行動心情日記</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="styles.css">
@@ -13,7 +13,7 @@
   <div class="sky-decor" aria-hidden="true"><i></i><i></i><i></i></div>
   <div class="app-shell">
     <header class="topbar">
-      <button class="brand" data-go="home" aria-label="距今小島首頁"><span class="brand-mark">島</span><span><strong>距今小島</strong><small>做過的事，會長成今天的怪物</small></span></button>
+      <button class="brand" data-go="home" aria-label="距今小島首頁"><span class="brand-mark">島</span><span><strong>距今小島</strong><small>做過的事，會住進今天的小島</small></span></button>
       <button class="round-button" id="themeBtn" aria-label="切換深色模式">☾</button>
     </header>
 
@@ -22,16 +22,15 @@
         <article class="today-hero">
           <div class="hero-copy">
             <p class="eyebrow" id="todayLabel"></p>
-            <h1>今天的你，<br>會長成什麼樣子？</h1>
-            <p id="todaySummary">每完成一件事，就替今日小怪物加上一個特徵。</p>
+            <h1>今天的你，<br>會住在什麼島？</h1>
+            <p id="todaySummary">每完成一件事，今天的島上就多一位小居民。</p>
             <div class="hero-actions"><button class="primary-button" id="quickRecordBtn">＋ 完成一件事</button><button class="soft-button" id="addItemBtn">新增活動</button></div>
           </div>
-          <div class="monster-stage">
+          <div class="monster-stage island-stage">
             <div class="stage-sparkles" aria-hidden="true">✦　·　✧</div>
-            <div id="todayMonster"></div>
-            <div class="monster-caption" id="monsterCaption"></div>
+            <div id="todayIsland"></div>
+            <div class="monster-caption" id="islandCaption"></div>
           </div>
-          <img class="hero-friend" src="assets/pixel-red-panda.png" alt="抱著星星的小熊貓夥伴">
         </article>
 
         <div class="today-counters" id="todayCounters"></div>
@@ -51,13 +50,14 @@
       </section>
 
       <section class="view" data-view="collection">
-        <div class="page-heading"><div><p class="eyebrow">每日生成</p><h1>小怪物圖鑑</h1><p>身體來自你做的事情，表情來自當下的心情，配件則由完成數量決定。</p></div></div>
+        <div class="page-heading"><div><p class="eyebrow">一天一座島</p><h1>你的每日群島</h1><p>每天只有一位心情主角；每完成一件事，島上就會多一位代表活動類型的小居民。</p></div></div>
         <div class="friend-strip">
-          <article><img src="assets/pixel-red-panda.png" alt="小熊貓"><div><strong>小莓</strong><span>喜歡的事情，讓顏色變暖</span></div></article>
-          <article><img src="assets/pixel-panda.png" alt="貓熊"><div><strong>團團</strong><span>工作與完成，長出俐落花紋</span></div></article>
-          <article><img src="assets/pixel-sloth.png" alt="樹懶"><div><strong>慢慢</strong><span>休息與照顧，長出葉子與柔軟耳朵</span></div></article>
+          <article><img src="assets/pixel-red-panda.png" alt="小熊貓"><div><strong>開心夥伴</strong><span>小熊貓或貓咪，代表明亮的一天</span></div></article>
+          <article><img src="assets/pixel-otter.png" alt="水獺"><div><strong>成就夥伴</strong><span>水獺或貓熊，替完成的事情頒獎</span></div></article>
+          <article><img src="assets/pixel-capybara.png" alt="水豚"><div><strong>平靜夥伴</strong><span>水豚或樹懶，陪你慢慢休息</span></div></article>
         </div>
-        <div class="daily-grid" id="dailyMonsterGrid"></div>
+        <div class="resident-legend"><span>🐰 喜歡</span><span>🐝 工作</span><span>🦊 興趣</span><span>🐢 照顧</span><span>🐭 家務</span><span>🐌 休息</span><span>🐧 不開心</span></div>
+        <div class="archipelago" id="archipelago"></div>
       </section>
 
       <section class="view" data-view="insights">
@@ -73,12 +73,12 @@
       <section class="view" data-view="settings">
         <div class="page-heading"><div><p class="eyebrow">你的島，你作主</p><h1>設定與備份</h1></div></div>
         <div class="settings-grid">
-          <article class="panel setting-card"><span>⇩</span><div><h2>匯出備份</h2><p>保存活動、次數、心情與小怪物資料。</p></div><button class="soft-button" id="exportBtn">下載 JSON</button></article>
+          <article class="panel setting-card"><span>⇩</span><div><h2>匯出備份</h2><p>保存活動、次數、心情與每日小島資料。</p></div><button class="soft-button" id="exportBtn">下載 JSON</button></article>
           <article class="panel setting-card"><span>⇧</span><div><h2>匯入備份</h2><p>用備份取代目前瀏覽器中的資料。</p></div><button class="soft-button" id="importBtn">選擇檔案</button><input id="importFile" type="file" accept="application/json" hidden></article>
           <article class="panel setting-card"><span>◐</span><div><h2>外觀</h2><p>跟隨系統，或固定亮色與暗色。</p></div><select id="themeSelect"><option value="system">跟隨系統</option><option value="light">亮色</option><option value="dark">暗色</option></select></article>
           <article class="panel setting-card danger-card"><span>×</span><div><h2>清除全部資料</h2><p>永久清除這個瀏覽器裡的紀錄。</p></div><button class="danger-button" id="clearBtn">清除資料</button></article>
         </div>
-        <p class="privacy-note">所有文字與紀錄只存在這個瀏覽器。小怪物由你的活動資料在本機組成，不會把日記傳去外部服務。</p>
+        <p class="privacy-note">所有文字與紀錄只存在這個瀏覽器。每日小島由你的活動資料在本機組成，不會把日記傳去外部服務。</p>
       </section>
     </main>
 
