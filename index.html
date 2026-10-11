@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#fff7e9">
   <meta name="description" content="距今小島：記錄做過的事與當下心情，讓每一天長成一座住滿動物的小島。">
   <title>距今小島｜行動心情日記</title>
-  <link rel="manifest" href="manifest.webmanifest?v=11">
-  <link rel="stylesheet" href="styles.css?v=11">
+  <link rel="manifest" href="manifest.webmanifest?v=12">
+  <link rel="stylesheet" href="styles.css?v=12">
 </head>
 <body>
   <div class="sky-decor" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -129,11 +129,12 @@
   <dialog id="island3dDialog" class="modal island-3d-modal">
     <div class="island-3d-content">
       <div class="modal-head"><div><p class="eyebrow">單獨檢視</p><h2 id="island3dTitle">這一天的島</h2><p id="island3dSummary"></p></div><button class="round-button close-modal" aria-label="關閉">×</button></div>
-      <div class="island-3d-scene" id="island3dScene" tabindex="0" aria-label="可拖曳旋轉的 3D 島嶼"><div id="island3dWorld"></div></div>
-      <p class="rotate-hint">↔ 拖曳島嶼旋轉 · 鍵盤可用左右方向鍵</p>
+      <div class="island-3d-scene" id="island3dScene" tabindex="0" aria-label="可用四個方向檢視的等角 3D 島嶼"><div id="island3dWorld"></div></div>
+      <div class="island-turn-controls" aria-label="旋轉島嶼"><button id="turnIslandLeft" type="button" aria-label="向左旋轉 90 度">↶</button><span>轉動小島</span><button id="turnIslandRight" type="button" aria-label="向右旋轉 90 度">↷</button></div>
+      <p class="rotate-hint">拖曳後會吸附到四個方向 · 也可以使用左右方向鍵</p>
     </div>
   </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"><span id="toastText"></span><button id="toastAction" hidden>復原</button></div>
-  <script src="app.js?v=11"></script>
+  <script src="app.js?v=12"></script>
 </body>
 </html>

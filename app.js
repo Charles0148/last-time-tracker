@@ -69,7 +69,8 @@ function islandMainVisual(spec,className='puzzle-main'){
   return`<img class="${className}" src="${spec.animal.src}" alt="${spec.mood}的${spec.animal.species}${spec.animal.name}">`;
 }
 function insectHtml(count,key,mode='puzzle'){
-  return Array.from({length:count},(_,i)=>{const h=hashString(`${key}-bug-${i}`),kind=insectKinds[h%insectKinds.length],x=12+(h%7600)/100,y=18+(Math.floor(h/97)%6500)/100;return`<span class="pixel-insect insect-${kind} ${mode}-insect" style="--bug-x:${x}%;--bug-y:${y}%;--bug-delay:-${(h%25)/10}s" aria-hidden="true"></span>`}).join('');
+  const gallerySpots=[[5,15],[95,15],[5,85],[95,85],[50,5],[3,50],[97,50],[50,95],[22,30],[78,70],[22,70],[78,30]];
+  return Array.from({length:count},(_,i)=>{const h=hashString(`${key}-bug-${i}`),kind=insectKinds[h%insectKinds.length],spot=mode==='three-d'?gallerySpots[i%gallerySpots.length]:null,x=spot?.[0]??12+(h%7600)/100,y=spot?.[1]??18+(Math.floor(h/97)%6500)/100;return`<span class="pixel-insect insect-${kind} ${mode}-insect" style="--bug-x:${x}%;--bug-y:${y}%;--bug-delay:-${(h%25)/10}s" aria-hidden="true"></span>`}).join('');
 }
 function residentForItem(item){
   if(!item)return{key:'other',...residentKindDefs.other};
@@ -131,8 +132,9 @@ function openIsland3d(key){
   const rs=data.records.filter(r=>dateKey(r.at)===key),s=islandSpec(rs,key),date=new Intl.DateTimeFormat('zh-TW',{year:'numeric',month:'long',day:'numeric',weekday:'long'}).format(new Date(`${key}T12:00:00`));
   islandTurn=0;
   $('#island3dTitle').textContent=date;$('#island3dSummary').textContent=`${rs.length} 件事 · ${rs.length} 隻昆蟲 · 心情 ${s.mood}${s.profession?` · 工作總合 ${s.profession.label}`:''}`;
-  $('#island3dWorld').className=`island-3d-world mood-${moodKeys[s.mood]}`;$('#island3dWorld').style.setProperty('--turn','0deg');$('#island3dWorld').style.setProperty('--counter','0deg');
-  $('#island3dWorld').innerHTML=`<div class="island-3d-water"></div><div class="island-3d-earth"></div><div class="island-3d-top"></div><div class="island-3d-bugs">${insectHtml(rs.length,key,'three-d')}</div><div class="island-3d-main">${islandMainVisual(s,'island-3d-character')}<span>${moodDefs[s.mood].icon}</span></div>`;
+  $('#island3dWorld').className=`island-3d-world mood-${moodKeys[s.mood]}`;
+  setIslandTurn(0,false);
+  $('#island3dWorld').innerHTML=`<div class="mv-shadow"></div><div class="mv-island"><span class="mv-island-top"></span><span class="mv-island-front"></span><span class="mv-island-side"></span></div><div class="mv-monuments"><span class="mv-block mv-tower-a"></span><span class="mv-block mv-tower-b"></span><span class="mv-bridge"></span><span class="mv-arch"><i></i></span><span class="mv-stairs">${'<i></i>'.repeat(6)}</span></div><div class="island-3d-bugs">${insectHtml(rs.length,key,'three-d')}</div><div class="island-3d-main">${islandMainVisual(s,'island-3d-character')}<span>${moodDefs[s.mood].icon}</span></div>`;
   $('#island3dDialog').showModal();
 }
 
@@ -172,9 +174,14 @@ $('#importBtn').onclick=()=>$('#importFile').click();$('#importFile').onchange=a
 $('#clearBtn').onclick=()=>{if(confirm('永久清除所有活動、次數、心情和每日小島？此動作無法復原。')){data=structuredClone(defaultData);localStorage.removeItem(STORAGE_KEY);renderAll();showToast('小島已清空')}};
 $$('.close-modal').forEach(b=>b.addEventListener('click',e=>e.currentTarget.closest('dialog').close()));
 let islandDrag=null,islandTurn=0;
-$('#island3dScene').addEventListener('pointerdown',e=>{islandDrag={x:e.clientX};e.currentTarget.setPointerCapture(e.pointerId);e.currentTarget.classList.add('dragging')});
-$('#island3dScene').addEventListener('pointermove',e=>{if(!islandDrag)return;islandTurn+=e.clientX-islandDrag.x;islandDrag.x=e.clientX;$('#island3dWorld').style.setProperty('--turn',`${islandTurn}deg`);$('#island3dWorld').style.setProperty('--counter',`${-islandTurn}deg`)});
-$('#island3dScene').addEventListener('pointerup',e=>{islandDrag=null;e.currentTarget.classList.remove('dragging')});
-$('#island3dScene').addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight'].includes(e.key))return;e.preventDefault();islandTurn+=e.key==='ArrowLeft'?-15:15;$('#island3dWorld').style.setProperty('--turn',`${islandTurn}deg`);$('#island3dWorld').style.setProperty('--counter',`${-islandTurn}deg`)});
-if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js?v=11',{updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{});
+function setIslandTurn(next,animate=true){islandTurn=next;const world=$('#island3dWorld');world.classList.toggle('turning',animate);world.style.setProperty('--turn',`${islandTurn}deg`);world.style.setProperty('--counter',`${-(45+islandTurn)}deg`)}
+function snapIslandTurn(){setIslandTurn(Math.round(islandTurn/90)*90)}
+$('#island3dScene').addEventListener('pointerdown',e=>{islandDrag={x:e.clientX,start:islandTurn};e.currentTarget.setPointerCapture(e.pointerId);e.currentTarget.classList.add('dragging')});
+$('#island3dScene').addEventListener('pointermove',e=>{if(!islandDrag)return;setIslandTurn(islandDrag.start+(e.clientX-islandDrag.x)*.7,false)});
+$('#island3dScene').addEventListener('pointerup',e=>{if(!islandDrag)return;islandDrag=null;e.currentTarget.classList.remove('dragging');snapIslandTurn()});
+$('#island3dScene').addEventListener('pointercancel',e=>{islandDrag=null;e.currentTarget.classList.remove('dragging');snapIslandTurn()});
+$('#island3dScene').addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight'].includes(e.key))return;e.preventDefault();setIslandTurn(Math.round(islandTurn/90)*90+(e.key==='ArrowLeft'?-90:90))});
+$('#turnIslandLeft').onclick=()=>setIslandTurn(Math.round(islandTurn/90)*90-90);
+$('#turnIslandRight').onclick=()=>setIslandTurn(Math.round(islandTurn/90)*90+90);
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js?v=12',{updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{});
 renderAll();
