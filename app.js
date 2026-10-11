@@ -194,5 +194,5 @@ $('#island3dScene').addEventListener('pointercancel',e=>{islandDrag=null;e.curre
 $('#island3dScene').addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight'].includes(e.key))return;e.preventDefault();setIslandTurn(Math.round(islandTurn/90)*90+(e.key==='ArrowLeft'?-90:90))});
 $('#turnIslandLeft').onclick=()=>setIslandTurn(Math.round(islandTurn/90)*90-90);
 $('#turnIslandRight').onclick=()=>setIslandTurn(Math.round(islandTurn/90)*90+90);
-if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js?v=15',{updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{});
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js?v=16',{updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{});
 renderAll();

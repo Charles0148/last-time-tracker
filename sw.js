@@ -1,4 +1,4 @@
-const CACHE='lastnote-v15';
+const CACHE='lastnote-v16';
 const ASSETS=['./','./index.html','./styles.css','./app.js','./island3d.js','./manifest.webmanifest','./vendor/three.core.min.js','./vendor/three.module.min.js','./vendor/GLTFLoader.js','./vendor/BufferGeometryUtils.js','./assets/pixel-red-panda.png','./assets/pixel-panda.png','./assets/pixel-sloth.png','./assets/pixel-cat.png','./assets/pixel-otter.png','./assets/pixel-capybara.png','./assets/pixel-hedgehog.png','./assets/pixel-penguin.png','./assets/profession-mascots-v2.png','./assets/pixel-insects-v1.png','./assets/3d/Corgi.glb','./assets/3d/Duck.glb','./assets/3d/Hippo.glb','./assets/3d/Marmot.glb','./assets/3d/Owl.glb','./assets/3d/Seal.glb','./assets/3d/Mountain001.glb','./assets/3d/TreeLow001.glb','./assets/3d/TreeHigh001.glb','./assets/3d/Rock001.glb','./assets/3d/Bush001.glb'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));

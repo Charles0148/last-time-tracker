@@ -88,11 +88,21 @@ function addProfessionMarker(profession,key){
 function addInsects(count,key){
   const shown=Math.min(count,60);
   for(let i=0;i<shown;i++){
-    const bug=new THREE.Group(),body=mesh(new THREE.SphereGeometry(.075,8,6),standard(i%2?0xf3bd3d:0xd95757),[0,0,0],bug);
-    const wingMat=new THREE.MeshStandardMaterial({color:0xf8f2dc,transparent:true,opacity:.75,side:THREE.DoubleSide});
-    const w1=mesh(new THREE.CircleGeometry(.075,8),wingMat,[-.075,.035,0],bug),w2=mesh(new THREE.CircleGeometry(.075,8),wingMat,[.075,.035,0],bug);w1.rotation.y=w2.rotation.y=Math.PI/2;
+    const bug=new THREE.Group(),kind=i%4;
+    const palettes=[
+      {body:0xd94d45,head:0x342d2b,wing:0xf49b83},
+      {body:0xf2bf3f,head:0x3d342f,wing:0xf7f2d8},
+      {body:0x865db3,head:0x423552,wing:0xf09aaa},
+      {body:0x4a9c83,head:0x284b47,wing:0x80c6a4}
+    ],palette=palettes[kind];
+    mesh(new THREE.BoxGeometry(.13,.1,.22),standard(palette.body),[0,0,0],bug);
+    mesh(new THREE.BoxGeometry(.11,.09,.1),standard(palette.head),[0,.01,.15],bug);
+    const wingMat=new THREE.MeshStandardMaterial({color:palette.wing,roughness:.7,transparent:true,opacity:kind===1?.72:.92});
+    const w1=mesh(new THREE.BoxGeometry(.14,.035,.15),wingMat,[-.12,.055,-.01],bug),w2=mesh(new THREE.BoxGeometry(.14,.035,.15),wingMat,[.12,.055,-.01],bug);
+    if(kind===1){mesh(new THREE.BoxGeometry(.14,.105,.035),standard(0x3d342f),[0,0,-.04],bug);mesh(new THREE.BoxGeometry(.14,.105,.035),standard(0x3d342f),[0,0,.045],bug)}
+    if(kind===0){mesh(new THREE.BoxGeometry(.035,.025,.035),standard(0x342d2b),[-.035,.065,-.045],bug);mesh(new THREE.BoxGeometry(.035,.025,.035),standard(0x342d2b),[.035,.065,.035],bug)}
     const angle=(i/shown)*Math.PI*2+(key.charCodeAt(key.length-1)%8)*.16,radius=1.65+(i%3)*.28;
-    bug.position.set(Math.cos(angle)*radius,.82+(i%4)*.12,Math.sin(angle)*radius);bug.userData={angle,radius,speed:.35+(i%5)*.05,phase:i*.8};island.add(bug);insects.push(bug);
+    bug.position.set(Math.cos(angle)*radius,.82+(i%4)*.12,Math.sin(angle)*radius);bug.userData={angle,radius,speed:.35+(i%5)*.05,phase:i*.8,wings:[w1,w2]};island.add(bug);insects.push(bug);
   }
 }
 
@@ -152,7 +162,7 @@ function animate(){
   requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05),time=clock.elapsedTime;
   mixers.forEach(m=>m.update(dt));
   if(island){island.rotation.y=THREE.MathUtils.damp(island.rotation.y,targetTurn,8,dt);island.children.forEach(o=>{if(o.userData.float)o.position.y+=Math.sin(time*2)*.0005})}
-  insects.forEach((bug,i)=>{bug.userData.angle+=dt*bug.userData.speed;bug.position.x=Math.cos(bug.userData.angle)*bug.userData.radius;bug.position.z=Math.sin(bug.userData.angle)*bug.userData.radius;bug.position.y=.82+(i%4)*.12+Math.sin(time*3+bug.userData.phase)*.09;bug.rotation.y=-bug.userData.angle});
+  insects.forEach((bug,i)=>{bug.userData.angle+=dt*bug.userData.speed;bug.position.x=Math.cos(bug.userData.angle)*bug.userData.radius;bug.position.z=Math.sin(bug.userData.angle)*bug.userData.radius;bug.position.y=.82+(i%4)*.12+Math.sin(time*3+bug.userData.phase)*.09;bug.rotation.y=-bug.userData.angle;const flap=.18+Math.abs(Math.sin(time*12+bug.userData.phase))*.42;bug.userData.wings[0].rotation.z=flap;bug.userData.wings[1].rotation.z=-flap});
   if(rain){const attr=rain.geometry.attributes.position;for(let i=1;i<attr.array.length;i+=3){attr.array[i]-=dt*5;if(attr.array[i]<-.3)attr.array[i]=6.5}attr.needsUpdate=true}
   renderer.render(scene,camera);
 }
