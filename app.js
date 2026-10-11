@@ -99,5 +99,5 @@ $('#exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({...data,export
 $('#importBtn').onclick=()=>$('#importFile').click();$('#importFile').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const incoming=JSON.parse(await file.text());if(!Array.isArray(incoming.items)||!Array.isArray(incoming.records))throw Error();if(confirm(`匯入 ${incoming.items.length} 個活動與 ${incoming.records.length} 次紀錄，並取代目前資料？`)){data={...structuredClone(defaultData),...incoming,version:3,moments:Array.isArray(incoming.moments)?incoming.moments:[],settings:{...defaultData.settings,...incoming.settings}};data.items=data.items.map(i=>({...i,type:inferType(i)}));data.records=data.records.map(r=>({...r,mood:normalizeMood(r.mood)}));save();showToast('小島備份已還原')}}catch{alert('這不是有效的「距今小島」備份。')}e.target.value=''};
 $('#clearBtn').onclick=()=>{if(confirm('永久清除所有活動、次數、心情和每日小島？此動作無法復原。')){data=structuredClone(defaultData);localStorage.removeItem(STORAGE_KEY);renderAll();showToast('小島已清空')}};
 $$('.close-modal').forEach(b=>b.addEventListener('click',e=>e.currentTarget.closest('dialog').close()));
-if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js?v=6',{updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{});
 renderAll();
