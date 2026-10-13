@@ -1,0 +1,13 @@
+<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><base href="../"><title>拼圖驗收示例（不儲存資料）</title><link rel="stylesheet" href="atlas.css?v=5"><style>body{margin:24px;background:#faf4ea;font-family:system-ui;color:#354f48}h1{font-size:22px}main{max-width:1200px;margin:auto}button{font:inherit}#result{white-space:pre-wrap;font-size:13px}</style><main><h1>拼圖驗收示例：三天、不同心情、1／4／34 隻昆蟲（超過 30 隻顯示上限）</h1><p>獨立測試資料，沒有讀寫 localStorage，也沒有載入 app 的啟動程式。</p><div id="residentLegend"></div><div id="archipelago"></div><p id="result"></p></main><script>
+(async()=>{
+  const source=await fetch('app.js?v=57').then(r=>r.text());
+  const begin=source.indexOf('function atlasOutline('),end=source.indexOf('\nfunction openIsland3d',begin);
+  const renderer=source.slice(begin,end);
+  const dates=['2026-10-10','2026-10-11','2026-10-12'];
+  const specs=[{mood:'開心',count:1,animal:{src:'assets/pixel-cat.png',species:'貓咪',name:'橘橘'},neighbors:[{kind:'love',label:'喜愛收藏',species:'redPanda'}]},{mood:'平靜',count:4,animal:{src:'assets/pixel-capybara.png',species:'水豚',name:'暖暖'},neighbors:[{kind:'technology',label:'科技程式',species:'sloth'},{kind:'creative',label:'創作設計',species:'cat'}]},{mood:'不開心',count:34,animal:{src:'assets/pixel-penguin.png',species:'企鵝',name:'雨點'},neighbors:[{kind:'sad',label:'低潮時刻',species:'otter'},{kind:'home',label:'家務整理',species:'sloth'},{kind:'care',label:'照顧陪伴',species:'capybara'},{kind:'nature',label:'園藝自然',species:'penguin'}]}];
+  const data={records:dates.flatMap((date,i)=>Array.from({length:specs[i].count},()=>({at:date})))};
+  const animalDefs={redPanda:{src:'assets/pixel-red-panda.png',species:'小熊貓'},cat:{src:'assets/pixel-cat.png',species:'貓咪'},otter:{src:'assets/pixel-otter.png',species:'水獺'},sloth:{src:'assets/pixel-sloth.png',species:'樹懶'},capybara:{src:'assets/pixel-capybara.png',species:'水豚'},penguin:{src:'assets/pixel-penguin.png',species:'企鵝'}};
+  new Function('data','$','dateKey','islandSpec','moodKeys','animalDefs','INSECT_DISPLAY_MAX',renderer+';renderCollection();')(data,s=>document.querySelector(s),x=>x,(_,key)=>specs[dates.indexOf(key)],{'開心':'happy','平靜':'calm','不開心':'sad'},animalDefs,30);
+  document.querySelector('#result').textContent='三片皆使用正式 renderCollection / atlasOutline / atlasMap 函式。';
+})();
+</script></html>

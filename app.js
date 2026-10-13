@@ -3,6 +3,12 @@ const typeDefs={
   '喜歡':{color:'#ef929b',icon:'💗'},'工作':{color:'#8bbbc7',icon:'💼'},'興趣':{color:'#aa94cb',icon:'🎨'},
   '照顧':{color:'#88bd91',icon:'🌱'},'家務':{color:'#e7bd66',icon:'🧺'},'休息':{color:'#8eaed6',icon:'☕'},'不開心':{color:'#9a91a8',icon:'🌧️'}
 };
+const counterIcons={
+  done:'<svg aria-hidden="true" viewBox="0 0 24 24"><path d="m12 3 1.15 3.85L17 8l-3.85 1.15L12 13l-1.15-3.85L7 8l3.85-1.15L12 3Z"/><path d="m18.5 13 .7 2.3 2.3.7-2.3.7-.7 2.3-.7-2.3-2.3-.7 2.3-.7.7-2.3Z"/></svg>',
+  love:'<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20.4 5.6a5 5 0 0 0-7.1 0L12 6.9l-1.3-1.3a5 5 0 0 0-7.1 7.1L12 21l8.4-8.3a5 5 0 0 0 0-7.1Z"/></svg>',
+  work:'<svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 12h18M10 12v2h4v-2"/></svg>',
+  hobby:'<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0 0 18h1.4a1.8 1.8 0 0 0 1.2-3.1 1.8 1.8 0 0 1 1.2-3.1H18a3 3 0 0 0 3-3A9 9 0 0 0 12 3Z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7.5" r="1"/><circle cx="14" cy="7" r="1"/><circle cx="17" cy="10" r="1"/></svg>'
+};
 const moodDefs={
   '開心':{face:'happy',icon:'●ᴗ●'},'有成就':{face:'achievement',icon:'★ᴗ★'},'平靜':{face:'calm',icon:'─ᴗ─'},
   '普通':{face:'normal',icon:'•ᴗ•'},'疲累':{face:'tired',icon:'─︿─'},'不開心':{face:'sad',icon:'•︿•'}
@@ -26,6 +32,15 @@ const residentKindDefs={
   shopping:{label:'購物財務',emoji:'🐹',keywords:/購物|買|採買|繳費|銀行|記帳|投資|預算/},rest:{label:'休息睡眠',emoji:'🦥',keywords:/休息|睡|午睡|放空|發呆|冥想|泡澡/},
   sad:{label:'低潮時刻',emoji:'🐈‍⬛',keywords:/不開心|難過|壓力|焦慮|生氣|哭|低潮/},other:{label:'日常其他',emoji:'🐼',keywords:/$^/}
 };
+// Activity kind -> neighbour species. The same pick drives the 2D atlas piece and the 3D island.
+const residentSpeciesPools={
+  love:['redPanda','cat'],office:['sloth','penguin'],technology:['sloth','cat'],study:['penguin','cat'],
+  reading:['sloth','capybara'],creative:['cat','redPanda'],music:['penguin','redPanda'],health:['capybara','otter'],
+  exercise:['redPanda','otter'],food:['capybara','redPanda'],home:['sloth','cat'],care:['capybara','otter'],
+  social:['redPanda','penguin'],travel:['otter','penguin'],nature:['penguin','capybara'],pet:['cat','redPanda'],
+  shopping:['sloth','capybara'],rest:['otter','capybara'],sad:['otter','sloth'],other:['capybara','penguin']
+};
+const NEIGHBOR_MAX=4,INSECT_DISPLAY_MAX=30;
 const residentFallback={'喜歡':'love','工作':'office','興趣':'creative','照顧':'care','家務':'home','休息':'rest','不開心':'sad'};
 const professionDefs={
   office:{label:'辦公行政',icon:'📋',mascot:'橘貓',keywords:/報告|會議|簡報|文書|行政|業務|財務|會計|管理|企劃|提案|合約|office|sales/i},
@@ -65,20 +80,20 @@ function hashString(value){let h=2166136261;for(const c of String(value)){h^=c.c
 const insectKinds=['ladybug','bee','butterfly','grasshopper','firefly','beetle','moth','dragonfly'];
 const moodKeys={'開心':'happy','有成就':'achievement','平靜':'calm','普通':'neutral','疲累':'tired','不開心':'sad'};
 const moodScenes={
-  '開心':{weather:'晴朗花風',expression:'≧▽≦',aura:'♡ ✿ ♡',story:'陽光照著花坡，小動物開心得跳了起來'},
-  '有成就':{weather:'金色晴空',expression:'•̀ᴗ•́ و',aura:'★ ✦ ★',story:'山頂升起旗幟，小動物驕傲地站上觀景台'},
-  '平靜':{weather:'微風薄雲',expression:'－‿－',aura:'～ ❧ ～',story:'溪水緩緩流過，小動物安靜地深呼吸'},
+  '開心':{weather:'晴朗',expression:'≧▽≦',aura:'♡ ✿ ♡',story:'太陽照著小島，主角開心得跳了起來'},
+  '有成就':{weather:'金色晴空',expression:'•̀ᴗ•́ و',aura:'★ ✦ ★',story:'山頂觀景台升起旗幟，主角舉起雙手'},
+  '平靜':{weather:'微風薄雲',expression:'－‿－',aura:'～ ❧ ～',story:'溪水緩緩流過，主角安靜地深呼吸'},
   '普通':{weather:'柔和多雲',expression:'・ᴗ・',aura:'· ○ ·',story:'雲慢慢飄過，是一座平穩的日常小島'},
-  '疲累':{weather:'暮色起霧',expression:'－_－ zZ',aura:'z Z z',story:'山谷起了霧，小動物靠著樹打起瞌睡'},
-  '不開心':{weather:'雷雨',expression:'╥﹏╥',aura:'☂ ϟ ☂',story:'大雨落在島上，小動物躲進拱門等雨停'}
+  '疲累':{weather:'暮色起霧',expression:'－_－ zZ',aura:'z Z z',story:'小島起了霧，主角垂著頭打瞌睡'},
+  '不開心':{weather:'雷雨',expression:'╥﹏╥',aura:'☂ ϟ ☂',story:'雷雨落在島上，主角低著頭等雨停'}
 };
 function islandMainVisual(spec,className='puzzle-main'){
-  if(spec.profession)return`<span class="${className} profession-sprite role-${spec.profession.key}" role="img" aria-label="${spec.mood}、${spec.profession.label}的${spec.profession.mascot}"></span>`;
-  return`<img class="${className}" src="${spec.animal.src}" alt="${spec.mood}的${spec.animal.species}${spec.animal.name}">`;
+  return`<img class="${className}" src="${spec.animal.src}" alt="${spec.mood}的${spec.animal.species}${spec.animal.name}">${spec.profession?`<span class="puzzle-profession-badge" title="${spec.profession.label}" aria-label="${spec.profession.label}">${spec.profession.icon}</span>`:''}`;
 }
 function insectHtml(count,key,mode='puzzle'){
   const gallerySpots=[[5,15],[95,15],[5,85],[95,85],[50,5],[3,50],[97,50],[50,95],[22,30],[78,70],[22,70],[78,30]];
-  return Array.from({length:count},(_,i)=>{const h=hashString(`${key}-bug-${i}`),kind=insectKinds[h%insectKinds.length],spot=mode==='three-d'?gallerySpots[i%gallerySpots.length]:null,x=spot?.[0]??12+(h%7600)/100,y=spot?.[1]??18+(Math.floor(h/97)%6500)/100;return`<span class="pixel-insect insect-${kind} ${mode}-insect" style="--bug-x:${x}%;--bug-y:${y}%;--bug-delay:-${(h%25)/10}s" aria-hidden="true"></span>`}).join('');
+  const mapSpots=[[20,35],[79,34],[18,68],[82,69],[34,25],[68,81],[31,82],[85,50],[43,19],[65,23],[38,69],[66,67]];
+  return Array.from({length:count},(_,i)=>{const h=hashString(`${key}-bug-${i}`),kind=insectKinds[h%insectKinds.length],spot=mode==='three-d'?gallerySpots[i%gallerySpots.length]:mode==='map'?mapSpots[i%mapSpots.length]:null,x=spot?.[0]??12+(h%7600)/100,y=spot?.[1]??18+(Math.floor(h/97)%6500)/100;return`<span class="pixel-insect insect-${kind} ${mode}-insect" style="--bug-x:${x}%;--bug-y:${y}%;--bug-delay:-${(h%25)/10}s" aria-hidden="true"></span>`}).join('');
 }
 function residentForItem(item){
   if(!item)return{key:'other',...residentKindDefs.other};
@@ -103,23 +118,31 @@ function islandSpec(records,key=dateKey(new Date())){
   const moods=countMap(records.map(r=>normalizeMood(r.mood))),mood=dominant(moods,'普通'),choices=moodAnimals[mood];
   const animalKey=choices[hashString(`${key}-${records.length}`)%choices.length],animal=animalDefs[animalKey];
   const residents=records.map(r=>residentForItem(data.items.find(i=>i.id===r.itemId)));
-  return{count:records.length,mood,animal,residents,profession:professionFor(records),decor:records.length===0?'':records.length<3?'🌱':records.length<6?'🌼':records.length<9?'🌳':'🚩'};
+  const used=new Set([animalKey]);
+  const neighbors=[...new Map(residents.map(r=>[r.key,r])).values()].slice(0,NEIGHBOR_MAX).map((r,index)=>{
+    const pool=residentSpeciesPools[r.key]||residentSpeciesPools.other,offset=hashString(`${key}-${r.key}-${index}`)%pool.length,ordered=[...pool.slice(offset),...pool.slice(0,offset)];
+    const species=ordered.find(x=>!used.has(x))||ordered.find(x=>x!==animalKey)||ordered[0];used.add(species);return{kind:r.key,label:r.label,species};
+  });
+  return{count:records.length,mood,animalKey,animal,residents,neighbors,profession:professionFor(records),decor:records.length===0?'':records.length<3?'🌱':records.length<6?'🌼':records.length<9?'🌳':'🚩'};
 }
 function islandHtml(records,key,mini=false){
   const s=islandSpec(records,key),visible=s.residents.slice(0,12),more=s.count-visible.length;
   const residents=visible.map((r,i)=>`<span class="island-resident resident-${i+1}" title="${r.label}" aria-label="${r.label}居民">${r.emoji}</span>`).join('');
-  const main=s.count?(s.profession?`<span class="profession-mascot role-${s.profession.key}" role="img" aria-label="穿著${s.profession.label}制服的${s.profession.mascot}"></span>`:`<img class="island-main-animal" src="${s.animal.src}" alt="今日主角${s.animal.species}${s.animal.name}">`):`<span class="island-egg" aria-label="等待第一件事的蛋">🥚</span>`;
-  return`<div class="daily-island ${mini?'mini-island':''}" aria-label="${s.count} 件事組成的小島，主角是${s.profession?s.profession.mascot:s.animal.species}"><span class="island-cloud">☁</span><div class="island-water"></div><div class="island-soil"></div><div class="island-grass"></div><span class="island-decor">${s.decor}</span>${main}<div class="island-residents">${residents}${more?`<span class="resident-more">+${more}</span>`:''}</div></div>`;
+  const main=s.count?`<img class="island-main-animal" src="${s.animal.src}" alt="今日主角${s.animal.species}${s.animal.name}">${s.profession?`<span class="island-profession-badge" title="${s.profession.label}" aria-label="${s.profession.label}">${s.profession.icon}</span>`:''}`:`<span class="island-egg" aria-label="等待第一件事的蛋">🥚</span>`;
+  return`<div class="daily-island ${mini?'mini-island':''}" aria-label="${s.count} 件事組成的小島，主角是${s.animal.species}"><span class="island-cloud">☁</span><div class="island-water"></div><div class="island-soil"></div><div class="island-grass"></div><span class="island-decor">${s.decor}</span>${main}<div class="island-residents">${residents}${more?`<span class="resident-more">+${more}</span>`:''}</div></div>`;
 }
 
-function applyTheme(){const mode=data.settings.theme||'system',dark=mode==='dark'||(mode==='system'&&matchMedia('(prefers-color-scheme:dark)').matches);document.documentElement.dataset.theme=dark?'dark':'light';$('#themeBtn').textContent=dark?'☀':'☾';$('#themeSelect').value=mode}
+function applyTheme(){const mode=data.settings.theme||'system',dark=mode==='dark'||(mode==='system'&&matchMedia('(prefers-color-scheme:dark)').matches);document.documentElement.dataset.theme=dark?'dark':'light';$('#themeBtn').innerHTML=dark?'<svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>':'<svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.2 15.1A8.5 8.5 0 0 1 8.9 3.8 8.5 8.5 0 1 0 20.2 15.1Z"/></svg>';$('#themeSelect').value=mode}
 function renderAll(){applyTheme();renderHome();renderHistory();renderCollection();renderInsights();renderSettings();populateRecordItems();populateResidentOptions()}
 function renderHome(){
   const today=data.records.filter(r=>sameDay(r.at)),key=dateKey(new Date()),spec=islandSpec(today,key),typeCounts=countMap(today.map(r=>data.items.find(i=>i.id===r.itemId)?.type||'喜歡'));
   $('#todayLabel').textContent=new Intl.DateTimeFormat('zh-TW',{month:'long',day:'numeric',weekday:'long'}).format(new Date());
-  $('#todaySummary').textContent=today.length?`今天完成了 ${today.length} 件事，島上已住進 ${today.length} 位小居民；主要心情是「${spec.mood}」${spec.profession?`，今天像一位${spec.profession.label}工作者`:''}。`:'今天還沒有紀錄。做完第一件事，主角動物就會帶著一位小居民登島。';
-  $('#todayIsland').innerHTML=islandHtml(today,key);$('#islandCaption').textContent=today.length?`主角：${spec.profession?spec.profession.mascot:spec.animal.name}（${spec.mood}）${spec.profession?` · ${spec.profession.icon} ${spec.profession.label}`:''} · ${today.length} 位小居民`:'等待第一位居民登島';
-  const counters=[['今日完成',today.length,'✨','#f6d887'],['喜歡',typeCounts['喜歡']||0,'💗','#f8c6cc'],['工作',typeCounts['工作']||0,'💼','#b9dce2'],['興趣',typeCounts['興趣']||0,'🎨','#d8cbed']];
+  $('#todaySummary').textContent=today.length?`今天完成了 ${today.length} 件事，島上飛來 ${today.length} 隻昆蟲${spec.neighbors.length?`，住進 ${spec.neighbors.length} 位活動鄰居`:''}；主要心情是「${spec.mood}」${spec.profession?`，今天像一位${spec.profession.label}工作者`:''}。`:'今天還沒有紀錄。做完第一件事，主角動物就會登島，並飛來第一隻昆蟲。';
+  const homeIsland={mood:spec.mood,moodKey:moodKeys[spec.mood]||'neutral',animalKey:spec.animalKey,count:today.length,key,neighbors:spec.neighbors,residentSignature:spec.neighbors.map(n=>`${n.kind}:${n.species}`).join('|'),professionKey:spec.profession?.key||'',professionLabel:spec.profession?.label||'',empty:today.length===0};
+  $('#homeIslandScene').setAttribute('aria-label',today.length?`今天真正的 3D 動物島，主角${spec.animal.species}心情${spec.mood}，${spec.neighbors.length} 位活動鄰居，${today.length} 隻昆蟲`:'今天真正的 3D 動物島，正在等待第一位居民');
+  window.currentHomeIsland3d=homeIsland;if(window.realIsland3d)window.realIsland3d.preview(homeIsland);else window.pendingHomeIsland3d=homeIsland;
+  $('#islandCaption').textContent=today.length?`主角：${spec.animal.name}（${spec.animal.species} · ${spec.mood}）${spec.profession?` · ${spec.profession.icon} ${spec.profession.label}`:''} ${spec.neighbors.length?` · ${spec.neighbors.length} 位活動鄰居`:''} · ${today.length} 隻昆蟲`:'等待第一位居民登島';
+  const counters=[['今日完成',today.length,counterIcons.done,'#f6d887'],['喜歡',typeCounts['喜歡']||0,counterIcons.love,'#f8c6cc'],['工作',typeCounts['工作']||0,counterIcons.work,'#b9dce2'],['興趣',typeCounts['興趣']||0,counterIcons.hobby,'#d8cbed']];
   $('#todayCounters').innerHTML=counters.map(([label,n,icon,tone])=>`<article class="counter-card" style="--tone:${tone}"><i>${icon}</i><div><strong>${n}</strong><span>${label}</span></div></article>`).join('');
   const types=['全部',...Object.keys(typeDefs)];if(!types.includes(activeType))activeType='全部';$('#typeChips').innerHTML=types.map(t=>`<button class="chip ${t===activeType?'active':''}" data-type="${t}">${t==='全部'?'全部':`${typeDefs[t].icon} ${t}`}</button>`).join('');
   const q=$('#searchInput').value.trim().toLowerCase();let items=data.items.filter(i=>(activeType==='全部'||i.type===activeType)&&(!q||`${i.name} ${i.category||''} ${i.type}`.toLowerCase().includes(q)));const sort=$('#sortSelect').value;items.sort((a,b)=>sort==='name'?a.name.localeCompare(b.name,'zh-Hant'):sort==='recent'?new Date(lastRecord(b)?.at||0)-new Date(lastRecord(a)?.at||0):sort==='count'?recordsFor(b.id).length-recordsFor(a.id).length:urgency(b)-urgency(a));
@@ -129,22 +152,59 @@ function itemCard(i){const r=lastRecord(i),e=elapsed(r?.at),def=typeDefs[i.type]
 
 function renderHistory(){const list=[...data.records].sort((a,b)=>new Date(b.at)-new Date(a.at));if(!list.length){$('#historyList').innerHTML='<div class="empty-state"><img src="assets/pixel-panda.png" alt="貓熊夥伴"><h2>還沒有足跡</h2><p>完成活動時，次數、距離與當下心情會一起留在這裡。</p></div>';return}const groups={};for(const r of list)(groups[dateKey(r.at)]??=[]).push(r);$('#historyList').innerHTML=Object.entries(groups).map(([key,rs])=>`<section class="history-group"><div class="history-date">${new Intl.DateTimeFormat('zh-TW',{year:'numeric',month:'long',day:'numeric',weekday:'short'}).format(new Date(`${key}T12:00:00`))}</div>${rs.map(r=>{const i=data.items.find(x=>x.id===r.itemId);if(!i)return'';const def=typeDefs[i.type]||typeDefs['喜歡'];return`<article class="history-entry"><div class="item-icon" style="--tone:${def.color}">${esc(i.icon)}</div><div class="history-main"><strong>${esc(i.name)} <span class="mood-badge">${moodDefs[normalizeMood(r.mood)].icon} ${normalizeMood(r.mood)}</span></strong><small>${esc(r.note||`${i.type}的一次紀錄`)}</small></div><time class="history-time">${displayDate(r.at)}</time><button class="delete-record" data-delete-record="${r.id}" aria-label="刪除紀錄">×</button></article>`}).join('')}</section>`).join('')}
 
+// A shared 260-unit edge is used by both neighbours; never independently draw sockets.
+function atlasOutline(first=false,future=false){
+  const right=future?170:280;
+  return `M20 20H${right}V132${future?'': 'c0 7 8 7 13 3c22-14 35 5 35 15s-13 29-35 15c-5-4-13-4-13 3'}V280H20V168${first?'':'c0-7 8-7 13-3c22 14 35-5 35-15s-13-29-35-15c-5 4-13 4-13-3'}V20Z`;
+}
+function atlasMap(s,key){
+  const tree=(x,y)=>`<g transform="translate(${x} ${y})"><circle r="13" fill="#527f62"/><circle cx="-3" cy="-3" r="10" fill="#79ac77"/><circle cx="-5" cy="-6" r="4" fill="#a1c58d"/></g>`;
+  // Same cap and kind order (i%4) as the 3D island: up to 12 on an inner ring, the rest on an outer ring.
+  const shown=Math.min(s.count,INSECT_DISPLAY_MAX),inner=Math.min(shown,12),outer=shown-inner;
+  const bugs=Array.from({length:shown},(_,i)=>{
+    const ring=i<inner?0:1,n=ring?outer:inner,j=ring?i-inner:i,a=j/n*Math.PI*2-(ring?.35:.6),x=150+Math.cos(a)*(ring?96:69),y=151+Math.sin(a)*(ring?74:56);
+    return `<svg class="atlas-bug" x="${x-8}" y="${y-8}" width="16" height="16" viewBox="${(i%4)*100} 0 100 100"><image href="assets/pixel-insects-v1.png" width="400" height="200" preserveAspectRatio="none"/></svg>`;
+  }).join('');
+  const neighborSpots=[[96,120],[160,80],[196,162],[108,184]];
+  const neighbors=s.neighbors.map((n,i)=>`<image class="atlas-neighbor" href="${animalDefs[n.species].src}" x="${neighborSpots[i][0]-15}" y="${neighborSpots[i][1]-17}" width="30" height="34"><title>${animalDefs[n.species].species}（${n.label}）</title></image>`).join('');
+  return `<g class="atlas-terrain" transform="translate(18 12) scale(.9)">
+    <path d="M74 106 106 78 163 72 211 91 234 130 222 182 184 218 122 224 76 201 58 155Z" fill="#f7e6b7"/>
+    <path d="M80 108 109 85 161 79 204 97 226 133 215 177 181 210 123 216 83 194 65 155Z" fill="var(--atlas-land)"/>
+    <path d="M82 109 110 85 160 80 180 101 153 115 108 129 66 153Z" fill="#d9e7af" opacity=".75"/>
+    <path d="M147 81C121 110 171 119 139 142S92 158 106 188L124 217" fill="none" stroke="#82c6d0" stroke-width="11" stroke-linecap="round"/>
+    <ellipse cx="112" cy="178" rx="22" ry="15" fill="#82c6d0"/>
+    <path d="M103 178q9 6 17 0" fill="none" stroke="#c9eeea" stroke-width="2"/>
+    <g transform="translate(143 136) rotate(30)"><rect x="-18" y="-10" width="36" height="20" rx="2" fill="#bc8860"/><path d="M-12-9v18m8-18v18m8-18v18m8-18v18" stroke="#ead1a0" stroke-width="3"/><path d="M-20-10h40m-40 20h40" stroke="#90634d" stroke-width="3"/></g>
+    ${tree(98,116)}${tree(200,121)}
+    <path d="m83 175 7-7 12 3 2 10-13 6Z m97-68 7-7 10 4-2 10-12 2Z" fill="#a0b29b" stroke="#809681" stroke-width="1.2"/>
+    <g fill="#fff1cc"><circle cx="118" cy="102" r="2.5"/><circle cx="125" cy="108" r="2.5"/><circle cx="113" cy="109" r="2.5"/></g>
+    ${neighbors}
+    <image href="${s.animal.src}" x="141" y="133" width="62" height="70" aria-label="${s.animal.species}${s.animal.name}"/>
+    ${s.profession?`<g><title>${s.profession.label}</title><circle cx="212" cy="148" r="10" fill="#fff8e8"/><text x="212" y="152" text-anchor="middle" font-size="12">${s.profession.icon}</text></g>`:''}
+    ${bugs}
+  </g>`;
+}
 function renderCollection(){
   const groups={};for(const r of data.records)(groups[dateKey(r.at)]??=[]).push(r);
   const entries=Object.entries(groups).sort((a,b)=>a[0].localeCompare(b[0]));
-  $('#residentLegend').innerHTML='<span>🧩 每天一片</span><span>🐞 一件事一隻昆蟲</span><span>↔ 點擊後可旋轉</span>';
-  $('#archipelago').innerHTML=entries.length?entries.map(([key,rs],index)=>{const s=islandSpec(rs,key),date=new Intl.DateTimeFormat('zh-TW',{month:'short',day:'numeric',weekday:'short'}).format(new Date(`${key}T12:00:00`)),edge=`${index%2?'socket-left':'tab-right'} ${Math.floor(index/3)%2?'socket-top':'tab-bottom'}`;return`<button class="puzzle-piece ${edge}" data-island-date="${key}" aria-label="${date}，${rs.length} 件事，點擊旋轉查看"><span class="puzzle-date">${date}</span><span class="puzzle-island mood-${moodKeys[s.mood]}"><span class="puzzle-ground"></span>${insectHtml(rs.length,key)}${islandMainVisual(s)}<span class="puzzle-mood">${moodDefs[s.mood].icon}</span></span><span class="puzzle-caption">${s.profession?s.profession.mascot:s.animal.species} · ${s.mood}${s.profession?` · ${s.profession.label}`:''}</span><strong>${rs.length} 隻昆蟲</strong></button>`}).join(''):'<div class="empty-state" style="grid-column:1/-1"><img src="assets/pixel-red-panda.png" alt="小熊貓夥伴"><h2>拼圖還在等第一片</h2><p>完成第一件事，今天就會成為生活地圖的一片島嶼。</p></div>';
+  $('#residentLegend').innerHTML=`<strong>${entries.length} 座日常小島</strong><span>每完成一件事，就多一隻昆蟲</span>`;
+  const board=$('#archipelago');board.className='atlas-board';
+  if(!entries.length){board.innerHTML='<div class="empty-state collection-empty"><img src="assets/pixel-red-panda.png" alt="小熊貓夥伴"><h2>拼圖還在等第一片</h2><p>完成第一件事，今天就會成為生活地圖的一片島嶼。</p></div>';return}
+  const pieces=entries.map(([key,rs],index)=>{
+    const s=islandSpec(rs,key),date=new Intl.DateTimeFormat('zh-TW',{month:'short',day:'numeric',weekday:'short'}).format(new Date(`${key}T12:00:00`));
+    return `<button class="atlas-piece mood-${moodKeys[s.mood]}" data-island-date="${key}" aria-label="${date}，${s.animal.species}，${s.mood}，${s.neighbors.length?`鄰居${s.neighbors.map(n=>animalDefs[n.species].species).join('、')}，`:''}${rs.length} 件事，點擊進入可旋轉 3D 島嶼"><svg viewBox="0 0 340 300" class="atlas-svg" role="img" aria-label="${date}的${s.animal.species}島，${rs.length} 隻昆蟲"><path class="atlas-cut" d="${atlasOutline(index===0)}"/><text x="42" y="49" class="atlas-date">${date}</text><text x="257" y="49" text-anchor="end" class="atlas-open">看 3D ↗</text>${atlasMap(s,key)}<path d="M43 238H257" class="atlas-divider"/><text x="43" y="263" class="atlas-species">${s.animal.species}<tspan dx="8" class="atlas-mood">${s.mood}</tspan></text><text x="257" y="263" text-anchor="end" class="atlas-count">${rs.length} 隻昆蟲${rs.length>INSECT_DISPLAY_MAX?`（顯示 ${INSECT_DISPLAY_MAX}）`:''}</text></svg></button>`;
+  }).join('');
+  board.innerHTML=`<div class="atlas-scroll" tabindex="0" role="region" aria-label="每日島嶼拼圖，左右捲動查看更多"><div class="atlas-chain">${pieces}<div class="atlas-next" aria-label="下一座島的位置"><svg viewBox="0 0 190 300" class="atlas-svg"><path class="atlas-cut" d="${atlasOutline(false,true)}"/><path d="M100 137v-18m0 9q-15 0-15-14 15 0 15 14m0-7q0-14 14-14 0 14-14 14" class="atlas-sprout"/><text x="100" y="165" text-anchor="middle" class="atlas-next-title">留給下一天</text><text x="100" y="185" text-anchor="middle" class="atlas-next-copy">下一次紀錄會接上</text></svg></div></div></div><div class="atlas-caption"><span>點一座島，走進那一天</span><span>左右滑動瀏覽群島 ↔</span></div>`;
 }
-
 function openIsland3d(key){
   const rs=data.records.filter(r=>dateKey(r.at)===key),s=islandSpec(rs,key),moodKey=moodKeys[s.mood],scene=moodScenes[s.mood],date=new Intl.DateTimeFormat('zh-TW',{year:'numeric',month:'long',day:'numeric',weekday:'long'}).format(new Date(`${key}T12:00:00`));
   islandTurn=0;
-  $('#island3dTitle').textContent=date;$('#island3dSummary').textContent=`${rs.length} 件事 · ${rs.length} 隻昆蟲 · ${scene.weather} · ${scene.story}${s.profession?` · ${s.profession.label}`:''}`;
+  $('#island3dTitle').textContent=date;$('#island3dSummary').textContent=`${rs.length} 件事 · ${rs.length} 隻昆蟲${rs.length>INSECT_DISPLAY_MAX?`（島上顯示 ${INSECT_DISPLAY_MAX} 隻）`:''} · ${scene.weather} · ${scene.story}${s.profession?` · ${s.profession.label}`:''}${s.neighbors.length?` · 鄰居：${s.neighbors.map(n=>`${animalDefs[n.species].species}（${n.label}）`).join('、')}`:''}`;
   $('#island3dScene').className=`island-3d-scene scene-${moodKey}`;
-  $('#islandWeather').innerHTML=`<span class="weather-sun"></span><span class="weather-cloud cloud-a">☁</span><span class="weather-cloud cloud-b">☁</span><span class="weather-lightning">ϟ</span><span class="weather-rain"></span>`;
+  $('#islandWeather').innerHTML='';
   $('#island3dWorld').className=`island-3d-world mood-${moodKey}`;
   setIslandTurn(0,false);
-  const realIsland={mood:s.mood,moodKey,count:rs.length,key,professionKey:s.profession?.key||'',professionLabel:s.profession?.label||''};
+  const realIsland={mood:s.mood,moodKey,animalKey:s.animalKey,count:rs.length,key,neighbors:s.neighbors,residentSignature:s.neighbors.map(n=>`${n.kind}:${n.species}`).join('|'),professionKey:s.profession?.key||'',professionLabel:s.profession?.label||''};
   if(window.realIsland3d)window.realIsland3d.open(realIsland);else window.pendingIsland3d=realIsland;
   $('#island3dDialog').showModal();
 }
@@ -153,7 +213,7 @@ function renderSettings(){
   const mode=data.settings.professionMode||'auto',today=data.records.filter(r=>sameDay(r.at)),detected=professionFor(today);
   $('#professionSelect').value=mode;
   $('#professionSettingHint').textContent=mode==='none'?'職業服裝已關閉，主角會保留原本模樣。':mode==='auto'?(detected?`已偵測：${detected.icon} ${detected.label}，${detected.reason}。判斷只在這個瀏覽器進行。`:'今天還沒有「工作」類紀錄；完成工作後就會自動換裝。'):`目前固定穿著：${professionDefs[mode].icon} ${professionDefs[mode].label}。`;
-  $('#wardrobePreview').innerHTML=Object.entries(professionDefs).map(([key,def])=>`<button type="button" class="wardrobe-option ${mode===key||mode==='auto'&&detected?.key===key?'active':''}" data-profession-pick="${key}" title="選擇${def.label}"><span class="profession-sprite role-${key}" role="img" aria-label="${def.mascot}${def.label}"></span><span class="wardrobe-label">${def.icon} ${def.label}</span></button>`).join('');
+  $('#wardrobePreview').innerHTML=Object.entries(professionDefs).map(([key,def])=>`<button type="button" class="wardrobe-option ${mode===key||mode==='auto'&&detected?.key===key?'active':''}" data-profession-pick="${key}" title="選擇${def.label}"><span class="profession-sprite role-${key}" role="img" aria-label="${def.mascot}${def.label}"></span><span class="wardrobe-label">${def.label}</span></button>`).join('');
 }
 
 function renderInsights(){
@@ -171,7 +231,7 @@ function openItem(item=null){$('#itemForm').reset();populateResidentOptions();$(
 function openRecord(itemId=''){if(!data.items.length){showToast('請先建立一個活動');openItem();return}populateRecordItems();$('#recordItem').value=itemId&&data.items.some(i=>i.id===itemId)?itemId:data.items[0].id;$('#recordDate').value=localDateTime();$('#recordNote').value='';$('input[name="recordMood"][value="普通"]').checked=true;$('#recordDialog').showModal()}
 function openDetail(item){const rs=recordsFor(item.id),last=rs[0],r=rhythm(item);$('#detailContent').innerHTML=`<div class="modal-head"><div><p class="eyebrow">${typeDefs[item.type].icon} ${item.type}</p><h2>${esc(item.name)}</h2></div><button class="round-button" data-close-detail>×</button></div><div class="detail-summary"><div class="mini-stat"><strong>${last?elapsed(last.at).n:'—'}</strong><span>${last?elapsed(last.at).unit:'尚未記錄'}</span></div><div class="mini-stat"><strong>${rs.length}</strong><span>累積次數</span></div><div class="mini-stat"><strong>${r??'—'}</strong><span>${r?'通常間隔天數':'等待更多紀錄'}</span></div></div><div class="detail-history">${rs.length?rs.map(x=>`<div class="detail-record"><div><strong>${displayDate(x.at)}</strong><small> · ${moodDefs[normalizeMood(x.mood)].icon} ${normalizeMood(x.mood)}${x.note?` · ${esc(x.note)}`:''}</small></div><button class="delete-record" data-delete-record="${x.id}">×</button></div>`).join(''):'<p class="card-meta">還沒有紀錄。</p>'}</div><div class="modal-actions"><button class="soft-button" data-detail-edit="${item.id}">編輯活動</button><span></span><button class="primary-button" data-detail-log="${item.id}">完成一次</button></div>`;$('#detailDialog').showModal()}
 function showToast(text,action=''){clearTimeout(toastTimer);$('#toastText').textContent=text;$('#toastAction').hidden=!action;$('#toastAction').textContent=action;$('#toast').classList.add('show');toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),4200)}
-function switchView(target){$$('.view').forEach(v=>v.classList.toggle('active',v.dataset.view===target));$$('.nav-button').forEach(b=>b.classList.toggle('active',b.dataset.target===target));scrollTo({top:0,behavior:'smooth'})}
+function switchView(target){$$('.view').forEach(v=>v.classList.toggle('active',v.dataset.view===target));$$('.nav-button').forEach(b=>b.classList.toggle('active',b.dataset.target===target));scrollTo({top:0,behavior:'smooth'});window.realIsland3d?.cancelThumbnails()}
 
 $('#itemForm').addEventListener('submit',e=>{e.preventDefault();const id=$('#itemId').value,item={id:id||uid(),name:$('#itemName').value.trim(),type:$('#itemType').value,icon:$('#itemIcon').value,category:$('#itemCategory').value.trim(),residentKind:$('#itemResident').value,createdAt:new Date().toISOString()};if(id){const old=data.items.find(i=>i.id===id);Object.assign(old,item,{createdAt:old.createdAt})}else data.items.push(item);$('#itemDialog').close();save();showToast(id?'活動已更新':'活動已加入小島')});
 $('#recordForm').addEventListener('submit',e=>{e.preventDefault();const rec={id:uid(),itemId:$('#recordItem').value,at:new Date($('#recordDate').value).toISOString(),mood:$('input[name="recordMood"]:checked').value,note:$('#recordNote').value.trim()};data.records.push(rec);undoRecord=rec;$('#recordDialog').close();save();showToast('一位小居民住進今天的島了','復原')});
@@ -185,7 +245,9 @@ $('#importBtn').onclick=()=>$('#importFile').click();$('#importFile').onchange=a
 $('#clearBtn').onclick=()=>{if(confirm('永久清除所有活動、次數、心情和每日小島？此動作無法復原。')){data=structuredClone(defaultData);localStorage.removeItem(STORAGE_KEY);renderAll();showToast('小島已清空')}};
 $$('.close-modal').forEach(b=>b.addEventListener('click',e=>e.currentTarget.closest('dialog').close()));
 let islandDrag=null,islandTurn=0;
-function setIslandTurn(next,animate=true){islandTurn=next;window.realIsland3d?.setTurn(islandTurn);const world=$('#island3dWorld');world.classList.toggle('turning',animate);world.style.setProperty('--turn',`${islandTurn}deg`);world.style.setProperty('--counter',`${-(45+islandTurn)}deg`)}
+const islandDirections=['南岸','西岸','北岸','東岸'];
+function updateIslandDirection(){const index=((Math.round(islandTurn/90)%4)+4)%4,label=islandDirections[index],scene=$('#island3dScene'),reset=$('#resetIslandView');$('#islandTurnLabel').textContent=label;$$('#islandTurnDots i').forEach((dot,i)=>dot.classList.toggle('active',i===index));scene.setAttribute('aria-label',`正在查看${label}，可拖曳或使用左右方向鍵旋轉真正的 3D 動物島`);reset.setAttribute('aria-label',index===0?'目前是南岸視角':`目前是${label}視角，點擊回到南岸`)}
+function setIslandTurn(next,animate=true){islandTurn=next;window.realIsland3d?.setTurn(islandTurn);const world=$('#island3dWorld');world.classList.toggle('turning',animate);world.style.setProperty('--turn',`${islandTurn}deg`);world.style.setProperty('--counter',`${-(45+islandTurn)}deg`);updateIslandDirection()}
 function snapIslandTurn(){setIslandTurn(Math.round(islandTurn/90)*90)}
 $('#island3dScene').addEventListener('pointerdown',e=>{islandDrag={x:e.clientX,start:islandTurn};e.currentTarget.setPointerCapture(e.pointerId);e.currentTarget.classList.add('dragging')});
 $('#island3dScene').addEventListener('pointermove',e=>{if(!islandDrag)return;setIslandTurn(islandDrag.start+(e.clientX-islandDrag.x)*.7,false)});
@@ -194,5 +256,6 @@ $('#island3dScene').addEventListener('pointercancel',e=>{islandDrag=null;e.curre
 $('#island3dScene').addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight'].includes(e.key))return;e.preventDefault();setIslandTurn(Math.round(islandTurn/90)*90+(e.key==='ArrowLeft'?-90:90))});
 $('#turnIslandLeft').onclick=()=>setIslandTurn(Math.round(islandTurn/90)*90-90);
 $('#turnIslandRight').onclick=()=>setIslandTurn(Math.round(islandTurn/90)*90+90);
-if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js?v=16',{updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{});
+$('#resetIslandView').onclick=()=>setIslandTurn(0);
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js?v=36',{updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{});
 renderAll();

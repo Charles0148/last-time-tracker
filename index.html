@@ -3,18 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#fff7e9">
+  <meta name="theme-color" content="#fff1e6">
   <meta name="description" content="距今小島：記錄做過的事與當下心情，讓每一天長成一座住滿動物的小島。">
   <title>距今小島｜行動心情日記</title>
   <link rel="manifest" href="manifest.webmanifest?v=16">
-  <link rel="stylesheet" href="styles.css?v=16">
+  <link rel="stylesheet" href="styles.css?v=52">
+  <link rel="stylesheet" href="atlas.css?v=5">
+  <link rel="stylesheet" href="redesign.css?v=43">
 </head>
 <body>
   <div class="sky-decor" aria-hidden="true"><i></i><i></i><i></i></div>
   <div class="app-shell">
     <header class="topbar">
-      <button class="brand" data-go="home" aria-label="距今小島首頁"><span class="brand-mark">島</span><span><strong>距今小島</strong><small>做過的事，會住進今天的小島</small></span></button>
-      <button class="round-button" id="themeBtn" aria-label="切換深色模式">☾</button>
+      <button class="brand" data-go="home" aria-label="距今小島首頁"><span class="brand-mark"><img src="assets/pixel-red-panda.png" alt=""></span><span><strong>距今小島</strong><small>做過的事，會住進今天的小島</small></span></button>
+      <button class="round-button" id="themeBtn" aria-label="切換深色模式"><svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.2 15.1A8.5 8.5 0 0 1 8.9 3.8 8.5 8.5 0 1 0 20.2 15.1Z"/></svg></button>
     </header>
 
     <main>
@@ -27,9 +29,16 @@
             <div class="hero-actions"><button class="primary-button" id="quickRecordBtn">＋ 完成一件事</button><button class="soft-button" id="addItemBtn">新增活動</button></div>
           </div>
           <div class="monster-stage island-stage">
-            <div class="stage-sparkles" aria-hidden="true">✦　·　✧</div>
-            <div id="todayIsland"></div>
-            <div class="monster-caption" id="islandCaption"></div>
+            <div class="island-vignette">
+              <div class="stage-sparkles" aria-hidden="true">✦　·　✧</div>
+              <div id="todayIsland">
+                <div class="home-island-scene" id="homeIslandScene" aria-label="今天真正的 3D 動物島">
+                  <canvas id="homeIslandCanvas" aria-label="今天真正的 3D 動物島預覽"></canvas>
+                  <div class="home-island-loading" id="homeIslandLoading">正在長出今天的小島…</div>
+                </div>
+              </div>
+              <div class="monster-caption" id="islandCaption"></div>
+            </div>
           </div>
         </article>
 
@@ -50,14 +59,16 @@
       </section>
 
       <section class="view" data-view="collection">
-        <div class="page-heading"><div><p class="eyebrow">一天一片拼圖</p><h1>你的每日群島</h1><p>每天的島會拼進生活地圖；每完成一件事，就多一隻像素昆蟲。點島嶼可單獨旋轉查看。</p></div></div>
+        <div class="page-heading"><div><h1>你的每日群島</h1><p>把做過的事，拼成一片溫柔的風景。<br>選一座島，回到那一天的心情。</p></div></div>
+        <div class="resident-legend" id="residentLegend"></div>
+        <div id="archipelago" class="atlas-board"></div>
+        <details class="atlas-help"><summary>心情會帶來哪些動物？</summary>
         <div class="friend-strip">
           <article><img src="assets/pixel-red-panda.png" alt="小熊貓"><div><strong>開心夥伴</strong><span>小熊貓或貓咪，代表明亮的一天</span></div></article>
           <article><img src="assets/pixel-otter.png" alt="水獺"><div><strong>成就夥伴</strong><span>水獺或貓熊，替完成的事情頒獎</span></div></article>
           <article><img src="assets/pixel-capybara.png" alt="水豚"><div><strong>平靜夥伴</strong><span>水豚或樹懶，陪你慢慢休息</span></div></article>
         </div>
-        <div class="resident-legend" id="residentLegend"></div>
-        <div class="archipelago puzzle-board" id="archipelago"></div>
+        </details>
       </section>
 
       <section class="view" data-view="insights">
@@ -130,12 +141,12 @@
     <div class="island-3d-content">
       <div class="modal-head"><div><p class="eyebrow">單獨檢視</p><h2 id="island3dTitle">這一天的島</h2><p id="island3dSummary"></p></div><button class="round-button close-modal" aria-label="關閉">×</button></div>
       <div class="island-3d-scene" id="island3dScene" tabindex="0" aria-label="可用四個方向檢視的真正 3D 動物島"><canvas id="island3dCanvas" aria-label="真正的 3D 動物島"></canvas><div class="island-weather-layer" id="islandWeather" aria-hidden="true"></div><div class="real-3d-loading" id="island3dLoading">正在長出真正的 3D 動物島…</div><div class="real-mood-card" id="islandMoodCard"></div><div id="island3dWorld" aria-hidden="true"></div></div>
-      <div class="island-turn-controls" aria-label="旋轉島嶼"><button id="turnIslandLeft" type="button" aria-label="向左旋轉 90 度">↶</button><span>轉動小島</span><button id="turnIslandRight" type="button" aria-label="向右旋轉 90 度">↷</button></div>
-      <p class="rotate-hint">拖曳後會吸附到四個方向 · 也可以使用左右方向鍵</p>
+      <div class="island-turn-controls" aria-label="旋轉島嶼"><button id="turnIslandLeft" type="button" aria-label="向左旋轉 90 度">↶</button><button id="resetIslandView" class="island-view-status" type="button" aria-label="回到南岸視角"><strong id="islandTurnLabel" aria-live="polite">南岸</strong><span id="islandTurnDots" aria-hidden="true"><i class="active"></i><i></i><i></i><i></i></span></button><button id="turnIslandRight" type="button" aria-label="向右旋轉 90 度">↷</button></div>
+      <p class="rotate-hint">拖曳或點按旋轉，會吸附到四個方向 · 鍵盤也可使用左右方向鍵</p>
     </div>
   </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"><span id="toastText"></span><button id="toastAction" hidden>復原</button></div>
-  <script type="module" src="island3d.js?v=16"></script>
-  <script src="app.js?v=16"></script>
+  <script type="module" src="island3d.js?v=42"></script>
+  <script src="app.js?v=57"></script>
 </body>
 </html>
