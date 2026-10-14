@@ -9,10 +9,26 @@
   <link rel="manifest" href="manifest.webmanifest?v=16">
   <link rel="stylesheet" href="styles.css?v=52">
   <link rel="stylesheet" href="atlas.css?v=5">
-  <link rel="stylesheet" href="redesign.css?v=43">
+  <link rel="stylesheet" href="redesign.css?v=46">
 </head>
 <body>
   <div class="sky-decor" aria-hidden="true"><i></i><i></i><i></i></div>
+  <section class="auth-gate" id="authGate" hidden aria-labelledby="authTitle">
+    <div class="auth-card">
+      <div class="auth-brand"><span class="brand-mark"><img src="assets/pixel-red-panda.png" alt=""></span><strong>距今小島</strong></div>
+      <h1 id="authTitle">登入你的小島</h1>
+      <p class="auth-lead" id="authLead">登入後，手機和電腦會看到同一份紀錄。</p>
+      <div class="auth-tabs" role="tablist" id="authTabs"><button type="button" role="tab" data-auth-mode="signin" aria-selected="true">登入</button><button type="button" role="tab" data-auth-mode="signup" aria-selected="false">註冊</button></div>
+      <form id="authForm" novalidate>
+        <label class="field" id="authEmailField"><span>Email</span><input id="authEmail" type="email" autocomplete="email" inputmode="email" required></label>
+        <label class="field"><span id="authPasswordLabel">密碼</span><input id="authPassword" type="password" autocomplete="current-password" minlength="6" required><small id="authPasswordHint" hidden>至少 6 個字元</small></label>
+        <p class="auth-message" id="authMessage" role="alert" hidden></p>
+        <button type="submit" class="primary-button auth-submit" id="authSubmit">登入</button>
+      </form>
+      <button type="button" class="auth-link" id="authForgot">忘記密碼？</button>
+      <p class="auth-privacy">紀錄會透過加密連線存在你自己的雲端帳號，只有登入的你讀得到。</p>
+    </div>
+  </section>
   <div class="app-shell">
     <header class="topbar">
       <button class="brand" data-go="home" aria-label="距今小島首頁"><span class="brand-mark"><img src="assets/pixel-red-panda.png" alt=""></span><span><strong>距今小島</strong><small>做過的事，會住進今天的小島</small></span></button>
@@ -85,12 +101,13 @@
         <div class="page-heading"><div><p class="eyebrow">你的島，你作主</p><h1>設定與備份</h1></div></div>
         <div class="settings-grid">
           <article class="panel setting-card wardrobe-setting"><span>🧥</span><div><h2>職業衣櫃</h2><p id="professionSettingHint">自動讀取今天「工作」類活動的名稱、分類與備註，只在本機判斷。</p></div><select id="professionSelect" aria-label="職業衣櫃模式"><option value="auto">自動偵測</option><option value="none">不穿職業服</option><option value="office">辦公行政</option><option value="medical">醫療照護</option><option value="technology">科技開發</option><option value="education">教育研究</option><option value="creative">創作設計</option><option value="food">餐飲烘焙</option><option value="care">照顧服務</option><option value="trades">工程技職</option></select><div class="wardrobe-preview" id="wardrobePreview"></div></article>
+          <article class="panel setting-card account-card"><span>☁</span><div><h2>帳號與同步</h2><p id="accountStatus">尚未登入</p></div><button class="soft-button" id="signOutBtn">登出</button></article>
           <article class="panel setting-card"><span>⇩</span><div><h2>匯出備份</h2><p>保存活動、次數、心情與每日小島資料。</p></div><button class="soft-button" id="exportBtn">下載 JSON</button></article>
           <article class="panel setting-card"><span>⇧</span><div><h2>匯入備份</h2><p>用備份取代目前瀏覽器中的資料。</p></div><button class="soft-button" id="importBtn">選擇檔案</button><input id="importFile" type="file" accept="application/json" hidden></article>
           <article class="panel setting-card"><span>◐</span><div><h2>外觀</h2><p>跟隨系統，或固定亮色與暗色。</p></div><select id="themeSelect"><option value="system">跟隨系統</option><option value="light">亮色</option><option value="dark">暗色</option></select></article>
-          <article class="panel setting-card danger-card"><span>×</span><div><h2>清除全部資料</h2><p>永久清除這個瀏覽器裡的紀錄。</p></div><button class="danger-button" id="clearBtn">清除資料</button></article>
+          <article class="panel setting-card danger-card"><span>×</span><div><h2>清除全部資料</h2><p>永久清除這個帳號在雲端與這個瀏覽器裡的紀錄。</p></div><button class="danger-button" id="clearBtn">清除資料</button></article>
         </div>
-        <p class="privacy-note">所有文字與紀錄只存在這個瀏覽器。每日小島由你的活動資料在本機組成，不會把日記傳去外部服務。</p>
+        <p class="privacy-note">紀錄會存在這個瀏覽器，並透過加密連線同步到你自己的雲端帳號；資料表設定成只有登入的你讀得到。每日小島在你的裝置上組成。</p>
       </section>
     </main>
 
@@ -146,7 +163,9 @@
     </div>
   </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"><span id="toastText"></span><button id="toastAction" hidden>復原</button></div>
-  <script type="module" src="island3d.js?v=42"></script>
-  <script src="app.js?v=57"></script>
+  <script src="cloud-config.js?v=2"></script>
+  <script src="cloud.js?v=1"></script>
+  <script type="module" src="island3d.js?v=49"></script>
+  <script src="app.js?v=69"></script>
 </body>
 </html>

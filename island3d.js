@@ -1,5 +1,6 @@
 import * as THREE from './vendor/three.module.min.js';
 import { GLTFLoader } from './vendor/GLTFLoader.js';
+import { mergeVertices } from './vendor/BufferGeometryUtils.js';
 
 const canvas = document.querySelector('#island3dCanvas');
 const loading = document.querySelector('#island3dLoading');
@@ -45,7 +46,11 @@ const INSECT_DISPLAY_MAX=30;
 const hashString=value=>{let hash=2166136261;for(const char of String(value)){hash^=char.charCodeAt(0);hash=Math.imul(hash,16777619)}return hash>>>0};
 
 const colors = {soil:0xa56f50,soilDark:0x755145,stone:0xf0d7a2,stoneSide:0xc59672,wood:0xa56d43,trunk:0x76513c};
-const standard = color => new THREE.MeshStandardMaterial({color,roughness:.85,metalness:0,flatShading:true});
+// The whole scene uses smooth toon shading; characters add a same-hue ink outline (matches the GPT-illustrated 2D art).
+const toonRamp=(()=>{const t=new THREE.DataTexture(new Uint8Array([150,150,150,255,205,205,205,255,255,255,255,255]),3,1);t.minFilter=t.magFilter=THREE.NearestFilter;t.needsUpdate=true;return t})();
+const toon=color=>new THREE.MeshToonMaterial({color,gradientMap:toonRamp});
+const inkFor=color=>{const c=new THREE.Color(color),hsl={};c.getHSL(hsl);return new THREE.Color().setHSL(hsl.h,Math.min(1,hsl.s*.9+.05),Math.max(.08,hsl.l*.42))};
+const standard = color => toon(color);
 const mesh = (geometry, material, position, parent=island) => { const value=new THREE.Mesh(geometry,material); value.position.set(...position); value.castShadow=true; value.receiveShadow=true; parent.add(value); return value; };
 
 function resize(){
@@ -72,7 +77,7 @@ function addLights(key){
 }
 
 function box(size,position,color,parent=island){return mesh(new THREE.BoxGeometry(...size),standard(color),position,parent)}
-function cylinder(top,bottom,height,segments,position,color,parent=island){return mesh(new THREE.CylinderGeometry(top,bottom,height,segments),standard(color),position,parent)}
+function cylinder(top,bottom,height,segments,position,color,parent=island){return mesh(new THREE.CylinderGeometry(top,bottom,height,Math.max(segments,20)),standard(color),position,parent)}
 function ribbon(points,widths,material,yOffset=0,parent=island){
   const vertices=[],indices=[];
   points.forEach((point,index)=>{
@@ -104,71 +109,171 @@ function islandBody(radii,topY,bottomY,topMaterial,sideMaterial){
   for(let i=0;i<count;i++){const next=(i+1)%count;indices.push(bottomCenter,1+count+i,1+count+next)}
   const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));geometry.setIndex(indices);geometry.computeVertexNormals();
   geometry.clearGroups();geometry.addGroup(0,sideStart,0);geometry.addGroup(sideStart,indices.length-sideStart,1);
-  const body=mesh(geometry,[topMaterial,sideMaterial],[0,0,0]);body.rotation.y=.08;return body;
+  return mesh(geometry,[topMaterial,sideMaterial],[0,0,0]);
 }
 
-function buildIsland(key,count,profession){
+// Layout coordinates are screen units (l: left/right, d: back/front of the default view); see islandLayout in app.js.
+const worldXZ=(l,d)=>[(l+d)/Math.SQRT2,(d-l)/Math.SQRT2];
+const worldRotation=a=>{const [x,z]=worldXZ(Math.cos(a),Math.sin(a));return Math.atan2(-z,x)};
+const GROUND=.34;
+const fallbackLayout={radii:[2.88,3.03,2.78,3.08,2.84,3.02,2.76,2.98,3.1,2.82,3,2.79],size:1,features:[],hero:[.78,.75],slots:[[-1.25,.85],[1.65,.05],[-.15,1.55],[1.05,-.85]],sign:[1.95,-.55]};
+function coastRadius(layout,x,z){
+  const n=layout.radii.length,t=((Math.atan2(z,x)/(Math.PI*2))*n+n)%n,i=Math.floor(t),f=t-i;
+  return (layout.radii[i]*(1-f)+layout.radii[(i+1)%n]*f)*layout.size;
+}
+function flat(geometry,material,x,z,y){const value=mesh(geometry,material,[x,y,z]);value.rotation.x=-Math.PI/2;value.castShadow=false;return value}
+
+function buildIsland(key,count,profession,layout=fallbackLayout){
   const mood=moods[key]; island=new THREE.Group(); island.rotation.y=targetTurn; scene.add(island);
-  const waterMat=new THREE.MeshStandardMaterial({color:mood.water,roughness:.22,metalness:.04,transparent:true,opacity:.86,flatShading:true});
-  const water=mesh(new THREE.CylinderGeometry(3.75,3.75,.1,48),waterMat,[0,-.73,0]);water.receiveShadow=true;
-  const islandRadii=[2.88,3.03,2.78,3.08,2.84,3.02,2.76,2.98,3.1,2.82,3,2.79];
-  islandBody(islandRadii,.34,-.58,standard(mood.ground),standard(colors.soil));
-
+  const waterMat=new THREE.MeshStandardMaterial({color:mood.water,roughness:.22,metalness:.04,transparent:true,opacity:.86});
+  const water=mesh(new THREE.CylinderGeometry(3.75,3.75,.1,72),waterMat,[0,-.73,0]);water.receiveShadow=true;
+  islandBody(layout.radii.map(r=>r*layout.size),GROUND,-.58,standard(mood.ground),standard(colors.soil));
+  const mats={
+    ground:mood.ground,
+    bank:Object.assign(standard(0x78936f),{side:THREE.DoubleSide}),
+    stream:Object.assign(waterMat.clone(),{side:THREE.DoubleSide,opacity:.94}),
+    path:Object.assign(standard(0xc9a56d),{side:THREE.DoubleSide})
+  };
   const clearingMat=standard(0xc7e9a0);clearingMat.color.lerp(new THREE.Color(mood.ground),.58);
-  const clearing=mesh(new THREE.CircleGeometry(.8,20),clearingMat,[1.36,.355,-.34]);clearing.rotation.x=-Math.PI/2;
-
-  const hill=mesh(new THREE.CylinderGeometry(.68,1.02,.62,10),standard(0x789b69),[-1.55,.65,-.72]);hill.scale.z=.82;hill.rotation.y=.14;
-  const hillTop=cylinder(.68,.72,.07,10,[-1.55,.995,-.72],0x92bf79);hillTop.scale.z=.82;hillTop.rotation.y=.14;
-
-  const riverbedMat=standard(0x78936f);riverbedMat.side=THREE.DoubleSide;
-  const streamMat=waterMat.clone();streamMat.side=THREE.DoubleSide;streamMat.opacity=.94;
-  const springBank=mesh(new THREE.CircleGeometry(.28,18),riverbedMat,[-1.28,1.04,-.63]);springBank.rotation.x=-Math.PI/2;
-  const spring=mesh(new THREE.CircleGeometry(.22,18),streamMat,[-1.28,1.06,-.63]);spring.rotation.x=-Math.PI/2;spring.castShadow=false;
-  const upperCreek=[[-1.22,1.05,-.58],[-1.12,1.04,-.46],[-1.04,1.025,-.34]];
-  ribbon(upperCreek,[.1,.105,.11],riverbedMat,-.015);ribbon(upperCreek,[.065,.07,.075],streamMat,.008);
-  const hillFall=mesh(new THREE.PlaneGeometry(.17,.5),streamMat,[-1,.75,-.29]);hillFall.rotation.y=.78;hillFall.castShadow=false;
-
-  const landingCreek=[[-.98,.39,-.18],[-.9,.38,-.04],[-.84,.375,.08]];
-  ribbon(landingCreek,[.11,.12,.13],riverbedMat,-.018);ribbon(landingCreek,[.075,.085,.095],streamMat,.01);
-  const pondBank=mesh(new THREE.CircleGeometry(.54,22),riverbedMat,[-.82,.352,.22]);pondBank.rotation.x=-Math.PI/2;
-  const pond=mesh(new THREE.CircleGeometry(.46,22),streamMat,[-.82,.374,.22]);pond.rotation.x=-Math.PI/2;pond.castShadow=false;
-  const creek=[[-.8,.374,.55],[-.79,.372,.78],[-.78,.37,1.02],[-.76,.365,1.32],[-.73,.355,1.68],[-.7,.32,2.1],[-.67,.27,2.55]];
-  const creekWidths=[.145,.14,.135,.125,.115,.1,.085];
-  ribbon(creek,creekWidths.map(width=>width+.055),riverbedMat,-.018);ribbon(creek,creekWidths,streamMat,.01);
-  const waterfall=mesh(new THREE.PlaneGeometry(.19,.74),streamMat,[-.67,-.1,2.68]);waterfall.rotation.y=.08;waterfall.castShadow=false;
-
-  const pathMat=standard(0xc9a56d);pathMat.side=THREE.DoubleSide;
-  const entryPath=[[1.78,.365,1.62],[1.52,.37,1.22],[1.42,.37,.72],[1.36,.37,.25],[1.15,.37,-.05],[.72,.37,.18],[.3,.37,.58],[-.24,.37,.96]];
-  ribbon(entryPath,[.16,.17,.18,.18,.17,.16,.15,.14],pathMat,.006);
-  const hillPath=[[-1.3,.37,.96],[-1.38,.37,.65],[-1.42,.375,.36]];
-  ribbon(hillPath,[.14,.15,.14],pathMat,.006);
-
-  const bridge=new THREE.Group();bridge.position.set(-.78,.455,1);island.add(bridge);
-  for(let i=-2;i<=2;i++)box([.84,.07,.12],[0,0,i*.12],i%2?colors.wood:0xb77b4b,bridge);
-  box([.9,.05,.05],[0,.04,-.28],colors.trunk,bridge);box([.9,.05,.05],[0,.04,.28],colors.trunk,bridge);
-  [[-.46,-.025,-.25],[-.46,-.025,.25],[.46,-.025,-.25],[.46,-.025,.25]].forEach(position=>cylinder(.075,.095,.14,6,position,colors.stoneSide,bridge));
-
-  const stairPath=[[-1.43,.42,.28],[-1.47,.54,.08],[-1.51,.66,-.12],[-1.55,.78,-.32],[-1.58,.9,-.52]];
-  stairPath.forEach(([x,y,z],index)=>{const step=box([.38,.085,.26],[x,y,z],index%2?0xc8b994:0xd3c39e);step.rotation.y=.16});
-
-  const lookout=new THREE.Group();lookout.position.set(-1.65,1.08,-.82);island.add(lookout);
-  cylinder(.4,.45,.105,8,[0,0,0],colors.stone,lookout);
-  [[-.3,.2,-.27],[.3,.2,-.27]].forEach(pos=>box([.065,.36,.065],pos,colors.trunk,lookout));
-  box([.66,.06,.06],[0,.38,-.27],colors.wood,lookout);
-  if(key==='achievement'){
-    cylinder(.025,.025,.62,6,[.22,.36,-.05],colors.trunk,lookout);
-    const flag=mesh(new THREE.BoxGeometry(.34,.2,.02),standard(0xf1bf5b),[.4,.56,-.05],lookout);flag.userData.flag=true;
+  flat(new THREE.CircleGeometry(.75,20),clearingMat,...worldXZ(...layout.hero),GROUND+.012);
+  const loads=layout.features.map(feature=>(featureBuilders[feature.type]||(()=>{}))(feature,layout,mats,key));
+  if(key==='achievement'&&!layout.features.some(f=>f.type==='hill'&&f.lookout)){
+    // Days without a lookout still raise the achievement flag, just behind the hero.
+    const [x,z]=worldXZ(layout.hero[0]-.5,layout.hero[1]-.55),pole=new THREE.Group();pole.position.set(x,GROUND,z);island.add(pole);addFlag(pole,0);
   }
-  addProfessionMarker(profession,key);
+  addProfessionMarker(profession,layout);
   addInsects(count,key);
   if(key==='sad')addRain();
   if(key==='tired'||key==='sad')scene.fog=new THREE.FogExp2(key==='sad'?0x526172:0x9aa9ae,key==='sad' ? .045 : .04);
+  return Promise.all(loads);
 }
 
-function addProfessionMarker(profession,key){
+function addFlag(parent,y){
+  cylinder(.025,.025,.62,6,[.22,y+.31,-.05],colors.trunk,parent);
+  const flag=mesh(new THREE.BoxGeometry(.34,.2,.02),standard(0xf1bf5b),[.4,y+.51,-.05],parent);flag.userData.flag=true;
+}
+
+function addPond(x,z,r,mats){
+  flat(new THREE.CircleGeometry(r*1.17,24),mats.bank,x,z,GROUND+.012);
+  flat(new THREE.CircleGeometry(r,24),mats.stream,x,z,GROUND+.034);
+}
+
+function addTree(f){
+  const [x,z]=worldXZ(f.l,f.d),h=f.h||.8;
+  if(f.kind==='high')return addProp('TreeHigh001.glb',[x,GROUND,z],h,f.l);
+  if(f.kind==='low')return addProp('TreeLow001.glb',[x,GROUND,z],h,f.d);
+  if(f.kind==='bush')return addProp('Bush001.glb',[x,GROUND,z],h,f.l*2);
+  const tree=new THREE.Group();tree.position.set(x,GROUND,z);island.add(tree);
+  if(f.kind==='pine'){
+    cylinder(.05,.07,h*.3,6,[0,h*.15,0],colors.trunk,tree);
+    [[.36,.42,.28],[.28,.36,.5],[.18,.3,.7]].forEach(([r,ch,y])=>mesh(new THREE.ConeGeometry(r*h*1.2,ch*h,18),standard(0x3f7a5a),[0,y*h+ch*h*.3,0],tree));
+  }else if(f.kind==='blossom'){
+    cylinder(.05,.08,h*.45,6,[0,h*.22,0],colors.trunk,tree);
+    [[0,.62,0,.3],[.18,.55,.1,.22],[-.16,.58,-.08,.22],[.04,.78,-.04,.2]].forEach(([px,py,pz,r])=>mesh(new THREE.SphereGeometry(r*h*1.15,20,14),standard(px>0?0xf3b2c4:0xf6c6d3),[px*h,py*h,pz*h],tree));
+  }else if(f.kind==='palm'){
+    const trunk=[0,.18,.36,.54,.72];trunk.forEach((t,i)=>cylinder(.055,.065,h*.2,6,[t*.22*h,t*h+.1*h,0],i%2?0x9a7350:0xb08860,tree));
+    for(let i=0;i<6;i++){const leaf=mesh(new THREE.BoxGeometry(.5*h,.03,.13*h),standard(i%2?0x4f9a5a:0x62ad66),[.16*h,.92*h,0],tree);leaf.rotation.y=i/6*Math.PI*2;leaf.rotation.z=-.35;leaf.position.x+=Math.cos(i/6*Math.PI*2)*.2*h;leaf.position.z-=Math.sin(i/6*Math.PI*2)*.2*h}
+  }
+  return null;
+}
+
+const flowerTones={pink:[0xf39ab4,0xfbd0dc],yellow:[0xf4c84f,0xfff0b0],purple:[0xb294d6,0xe1d1f4],red:[0xe9677a,0xffc2c9]};
+const featureBuilders={
+  hill(f,layout,mats,key){
+    const [x,z]=worldXZ(f.l,f.d),top=GROUND+f.h;
+    mesh(new THREE.CylinderGeometry(f.r*.68,f.r,f.h,32),standard(0x789b69),[x,GROUND+f.h/2,z]);
+    cylinder(f.r*.68,f.r*.71,.07,32,[x,top+.035,z],0x92bf79);
+    // Stairs climb from the front so they face the camera and the hero.
+    const dir=new THREE.Vector2(...worldXZ(.55,1)).normalize();
+    for(let i=0;i<5;i++){const t=i/4,dist=f.r*(1.02-t*.5),step=box([.36,.085,.24],[x+dir.x*dist,GROUND+.08+t*(f.h-.08),z+dir.y*dist],i%2?0xc8b994:0xd3c39e);step.rotation.y=Math.atan2(dir.x,dir.y)}
+    if(f.spring){
+      const [sx,sz]=worldXZ(f.l-.25,f.d+.25);flat(new THREE.CircleGeometry(.24,18),mats.bank,sx,sz,top+.075);flat(new THREE.CircleGeometry(.19,18),mats.stream,sx,sz,top+.09);
+      const [fx,fz]=worldXZ(f.l-f.r*.62,f.d+f.r*.62),fall=mesh(new THREE.PlaneGeometry(.16,f.h*.8),mats.stream,[fx,GROUND+f.h*.5,fz]);fall.rotation.y=Math.atan2(...worldXZ(-1,1));fall.castShadow=false;
+    }
+    if(f.lookout){
+      const lookout=new THREE.Group();lookout.position.set(x-.12,top+.12,z-.1);island.add(lookout);
+      cylinder(.36,.4,.105,8,[0,0,0],colors.stone,lookout);
+      [[-.27,.2,-.24],[.27,.2,-.24]].forEach(pos=>box([.065,.36,.065],pos,colors.trunk,lookout));
+      box([.6,.06,.06],[0,.38,-.24],colors.wood,lookout);
+      if(key==='achievement')addFlag(lookout,.05);
+    }
+  },
+  pond(f,layout,mats){addPond(...worldXZ(f.l,f.d),f.r,mats)},
+  lake(f,layout,mats){addPond(...worldXZ(f.l,f.d),f.r,mats)},
+  islet(f){const [x,z]=worldXZ(f.l,f.d);cylinder(f.r,f.r*1.1,.08,10,[x,GROUND+.06,z],0xa9cf8f);return addTree({kind:'low',l:f.l,d:f.d,h:.5})},
+  creek(f,layout,mats){
+    const pts=f.pts.map(p=>worldXZ(...p)),last=pts[pts.length-1],edge=coastRadius(layout,...last),dist=Math.hypot(...last),n=pts.length;
+    // Extend to the coast so the stream always ends in the waterfall.
+    const end=[last[0]/dist*edge*.99,last[1]/dist*edge*.99],points=[...pts,end].map(([x,z],i)=>[x,GROUND+.03-(i>=n-1?.04:0),z]),widths=points.map((_,i)=>.14-i*.012);
+    ribbon(points,widths.map(w=>w+.055),mats.bank,-.012);ribbon(points,widths,mats.stream,.01);
+    if(f.fall){const fall=mesh(new THREE.PlaneGeometry(.18,.74),mats.stream,[end[0]*1.005,-.1,end[1]*1.005]);fall.rotation.y=Math.atan2(end[0],end[1]);fall.castShadow=false}
+  },
+  path(f,layout,mats){const pts=f.pts.map(p=>[...worldXZ(...p)]).map(([x,z])=>[x,GROUND+.03,z]);ribbon(pts,pts.map(()=>.15),mats.path,.004)},
+  stones(f){f.pts.forEach(([l,d])=>{const [x,z]=worldXZ(l,d);cylinder(.13,.15,.05,7,[x,GROUND+.03,z],0xd8cdb8)})},
+  bridge(f){
+    const [x,z]=worldXZ(f.l,f.d),bridge=new THREE.Group();bridge.position.set(x,GROUND+.115,z);bridge.rotation.y=worldRotation(f.a);island.add(bridge);
+    for(let i=-2;i<=2;i++)box([.12,.07,.6],[i*.12,0,0],i%2?colors.wood:0xb77b4b,bridge);
+    box([.66,.05,.05],[0,.06,-.3],colors.trunk,bridge);box([.66,.05,.05],[0,.06,.3],colors.trunk,bridge);
+  },
+  dock(f){
+    const [x,z]=worldXZ(f.l,f.d),dock=new THREE.Group();dock.position.set(x,GROUND+.07,z);dock.rotation.y=worldRotation(f.a);island.add(dock);
+    for(let i=0;i<6;i++)box([.12,.05,.34],[-.3+i*.13,0,0],i%2?colors.wood:0xb77b4b,dock);
+    [[.32,-.16],[.32,.16]].forEach(([px,pz])=>cylinder(.03,.03,.3,6,[px,-.08,pz],colors.trunk,dock));
+  },
+  tree:addTree,
+  rock(f){
+    const [x,z]=worldXZ(f.l,f.d);
+    if(!f.dark)return addProp('Rock001.glb',[x,GROUND,z],f.s,f.l);
+    const rock=mesh(new THREE.DodecahedronGeometry(f.s*.75,0),standard(0x737a86),[x,GROUND+f.s*.4,z]);rock.scale.y=.8;rock.rotation.set(f.l,f.d,0);
+  },
+  flowers(f){
+    const [x,z]=worldXZ(f.l,f.d),tones=flowerTones[f.tone]||[[0xf39ab4,0xf4c84f,0xb294d6][Math.abs(Math.round(f.l*3))%3],0xffffff];
+    flat(new THREE.CircleGeometry(f.r,14),standard(0x7fae5f),x,z,GROUND+.014);
+    for(let i=0;i<7;i++){const a=i*2.4,r=f.r*(.25+.65*((i*37)%10)/10);cylinder(.012,.012,.12,4,[x+Math.cos(a)*r,GROUND+.07,z+Math.sin(a)*r],0x5d8f4b);mesh(new THREE.SphereGeometry(.05,10,8),standard(tones[i%2]),[x+Math.cos(a)*r,GROUND+.14,z+Math.sin(a)*r])}
+  },
+  mushroom(f){
+    const [x,z]=worldXZ(f.l,f.d);cylinder(.05,.06,.16,8,[x,GROUND+.08,z],0xf3e8d4);
+    const cap=mesh(new THREE.SphereGeometry(.14,10,6,0,Math.PI*2,0,Math.PI/2),standard(0xd9534f),[x,GROUND+.15,z]);cap.scale.y=.8;
+    [[.06,.04],[-.05,.06],[0,-.07]].forEach(([dx,dz])=>mesh(new THREE.SphereGeometry(.022,6,4),standard(0xffffff),[x+dx,GROUND+.25,z+dz]));
+  },
+  field(f){
+    const [x,z]=worldXZ(f.l,f.d),field=new THREE.Group();field.position.set(x,GROUND,z);field.rotation.y=worldRotation(f.a);island.add(field);
+    box([f.w,.05,f.dd],[0,.025,0],0x8c6448,field);
+    for(let row=0;row<4;row++)for(let i=0;i<6;i++)box([.08,.1+((row+i)%3)*.03,.08],[-f.w/2+.18+i*(f.w-.36)/5,.1,-f.dd/2+.17+row*(f.dd-.34)/3],row%2?0x7fbf5a:0x9ccc5f,field);
+    const posts=[[-1,-1],[1,-1],[1,1],[-1,1]];posts.forEach(([px,pz])=>box([.05,.22,.05],[px*(f.w/2+.06),.11,pz*(f.dd/2+.06)],colors.wood,field));
+    box([f.w+.12,.035,.035],[0,.16,-(f.dd/2+.06)],colors.wood,field);box([.035,.035,f.dd+.12],[-(f.w/2+.06),.16,0],colors.wood,field);box([.035,.035,f.dd+.12],[f.w/2+.06,.16,0],colors.wood,field);
+  },
+  house(f){
+    const [x,z]=worldXZ(f.l,f.d),house=new THREE.Group();house.position.set(x,GROUND,z);house.rotation.y=worldRotation(f.a)+Math.PI/2;island.add(house);
+    box([.62,.42,.52],[0,.21,0],0xf3e3c3,house);
+    const roof=mesh(new THREE.ConeGeometry(.52,.36,4),standard(0xd9645a),[0,.6,0],house);roof.rotation.y=Math.PI/4;roof.scale.z=.9;
+    box([.14,.24,.02],[0,.12,.27],0x8a5a3c,house);box([.12,.1,.02],[.2,.26,.27],0xa9d8e8,house);
+  },
+  haystack(f){const [x,z]=worldXZ(f.l,f.d);cylinder(.2,.24,.24,10,[x,GROUND+.12,z],0xe8c766);mesh(new THREE.ConeGeometry(.21,.18,20),standard(0xf0d47f),[x,GROUND+.33,z])},
+  beach(f,layout){
+    // Screen angle φ maps to world angle φ-45°; build a sand band hugging the coast.
+    const from=THREE.MathUtils.degToRad(f.from-45),to=THREE.MathUtils.degToRad(f.to-45),steps=24,vertices=[],indices=[];
+    for(let i=0;i<=steps;i++){const a=from+(to-from)*i/steps,cx=Math.cos(a),cz=Math.sin(a),edge=coastRadius(layout,cx,cz)*.985;vertices.push(cx*edge,GROUND+.008,cz*edge,cx*edge*.66,GROUND+.008,cz*edge*.66);if(i<steps){const b=i*2;indices.push(b,b+2,b+1,b+1,b+2,b+3)}}
+    const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));geometry.setIndex(indices);geometry.computeVertexNormals();
+    const sand=mesh(geometry,Object.assign(standard(0xf1d9a5),{side:THREE.DoubleSide}),[0,0,0]);sand.castShadow=false;
+  },
+  umbrella(f){
+    const [x,z]=worldXZ(f.l,f.d);cylinder(.02,.02,.62,6,[x,GROUND+.31,z],0xf6efe3);
+    mesh(new THREE.ConeGeometry(.42,.2,24),standard(0xf08a77),[x,GROUND+.66,z]);box([.34,.02,.18],[x+.12,GROUND+.02,z+.18],0x7fbcd2);
+  },
+  shells(f){f.pts.forEach(([l,d],i)=>{const [x,z]=worldXZ(l,d),shell=mesh(new THREE.SphereGeometry(.05,8,4,0,Math.PI*2,0,Math.PI/2),standard(i%2?0xffe3ea:0xfff6e8),[x,GROUND+.01,z]);shell.scale.set(1.2,.6,1)})},
+  arch(f){
+    const [x,z]=worldXZ(f.l,f.d),arch=new THREE.Group();arch.position.set(x,GROUND,z);arch.rotation.y=worldRotation(f.a);island.add(arch);
+    mesh(new THREE.TorusGeometry(.42,.13,6,12,Math.PI),standard(0x8b919b),[0,.05,0],arch);
+    box([.3,.12,.3],[-.42,.06,0],0x737a86,arch);box([.3,.12,.3],[.42,.06,0],0x737a86,arch);
+  }
+};
+
+function addProfessionMarker(profession,layout){
   if(!profession)return;
+  const [x,z]=worldXZ(...layout.sign);
   const palette={office:0x40577a,medical:0xf3f5ef,technology:0x3e8a7b,education:0x8c69a9,creative:0xf08a77,food:0xe5a94e,care:0x68a890,trades:0xe9a63b};
-  const marker=new THREE.Group();marker.name='professionMarker';marker.position.set(1.95,.34,-.75);marker.rotation.y=-.42;island.add(marker);
+  const marker=new THREE.Group();marker.name='professionMarker';marker.position.set(x,GROUND,z);marker.rotation.y=-.42;island.add(marker);
   box([.09,.88,.09],[0,.44,0],0x68504a,marker);
   const sign=box([.7,.38,.08],[.28,.72,0],palette[profession]||0x6b86a8,marker);sign.userData.float=true;
 }
@@ -184,13 +289,13 @@ function addInsects(count,key){
       {body:0xead2ae,head:0xead2ae,wing:0x3f95e0},
       {body:0x7fb24a,head:0x8cc257,wing:0x5f9a3c}
     ],palette=palettes[kind],wingSize=kind===2?[.24,.02,.22]:[.14,.035,.15];
-    mesh(new THREE.BoxGeometry(.13,.1,.22),standard(palette.body),[0,0,0],bug);
-    mesh(new THREE.BoxGeometry(.11,.09,.1),standard(palette.head),[0,.01,.15],bug);
+    mesh(new THREE.SphereGeometry(.085,14,10),standard(palette.body),[0,0,0],bug).scale.set(.9,.8,1.35);
+    mesh(new THREE.SphereGeometry(.058,12,10),standard(palette.head),[0,.01,.15],bug);
     const wingMat=new THREE.MeshStandardMaterial({color:palette.wing,roughness:.7,transparent:true,opacity:kind===1?.72:.95});
-    const w1=mesh(new THREE.BoxGeometry(...wingSize),wingMat,[-(wingSize[0]/2+.05),.055,-.01],bug),w2=mesh(new THREE.BoxGeometry(...wingSize),wingMat,[wingSize[0]/2+.05,.055,-.01],bug);
+    const w1=mesh(new THREE.CylinderGeometry(wingSize[0]/2,wingSize[0]/2,wingSize[1],16),wingMat,[-(wingSize[0]/2+.05),.055,-.01],bug),w2=mesh(new THREE.CylinderGeometry(wingSize[0]/2,wingSize[0]/2,wingSize[1],16),wingMat,[wingSize[0]/2+.05,.055,-.01],bug);
     if(kind===3){mesh(new THREE.BoxGeometry(.03,.14,.03),standard(0x5f9a3c),[-.08,-.02,-.1],bug).rotation.x=.9;mesh(new THREE.BoxGeometry(.03,.14,.03),standard(0x5f9a3c),[.08,-.02,-.1],bug).rotation.x=.9}
-    if(kind===1){mesh(new THREE.BoxGeometry(.14,.105,.035),standard(0x3d342f),[0,0,-.04],bug);mesh(new THREE.BoxGeometry(.14,.105,.035),standard(0x3d342f),[0,0,.045],bug)}
-    if(kind===0){mesh(new THREE.BoxGeometry(.035,.025,.035),standard(0x342d2b),[-.035,.065,-.045],bug);mesh(new THREE.BoxGeometry(.035,.025,.035),standard(0x342d2b),[.035,.065,.035],bug)}
+    if(kind===1){mesh(new THREE.TorusGeometry(.072,.014,6,18),standard(0x3d342f),[0,0,-.03],bug);mesh(new THREE.TorusGeometry(.068,.014,6,18),standard(0x3d342f),[0,0,.04],bug)}
+    if(kind===0){mesh(new THREE.SphereGeometry(.02,8,6),standard(0x342d2b),[-.035,.065,-.045],bug);mesh(new THREE.SphereGeometry(.02,8,6),standard(0x342d2b),[.035,.065,.035],bug)}
     const angle=(i/shown)*Math.PI*2+(key.charCodeAt(key.length-1)%8)*.16,radius=1.55+(i%3)*.22;
     bug.position.set(Math.cos(angle)*radius,.68+(i%4)*.1,.05+Math.sin(angle)*radius);bug.userData={angle,radius,speed:.35+(i%5)*.05,phase:i*.8,wings:[w1,w2]};island.add(bug);insects.push(bug);
   }
@@ -204,8 +309,8 @@ function addRain(){
   rain=new THREE.LineSegments(geo,new THREE.LineBasicMaterial({color:0xd4ebff,transparent:true,opacity:.55}));scene.add(rain);
 }
 
-function addEgg(){
-  const egg=mesh(new THREE.SphereGeometry(.34,18,14),standard(0xf0b16e),[1.36,.72,-.34]);
+function addEgg(layout){
+  const [x,z]=worldXZ(...layout.hero),egg=mesh(new THREE.SphereGeometry(.34,18,14),standard(0xf0b16e),[x,.72,z]);
   egg.scale.set(.74,1.04,.74);egg.rotation.z=-.06;
   const glow=new THREE.PointLight(0xffd79a,1.1,4);glow.position.set(0,1.8,.5);island.add(glow);
 }
@@ -233,29 +338,40 @@ function addSky(key){
 }
 
 function addCloud(x,y,z,shade=0xffffff){
-  const g=new THREE.Group();[[0,0,0,.45],[.38,.02,0,.32],[-.38,.01,.04,.3],[.05,.2,.02,.34]].forEach(([px,py,pz,s])=>mesh(new THREE.SphereGeometry(s,10,7),standard(shade),[px,py,pz],g));g.position.set(x,y,z);scene.add(g);return g;
+  const g=new THREE.Group();[[0,0,0,.45],[.38,.02,0,.32],[-.38,.01,.04,.3],[.05,.2,.02,.34]].forEach(([px,py,pz,s])=>mesh(new THREE.SphereGeometry(s,20,14),standard(shade),[px,py,pz],g));g.position.set(x,y,z);scene.add(g);return g;
+}
+
+// GLB attributes may be interleaved or quantized; rebuild plain float positions, then weld and smooth the normals.
+function smoothGeometry(source){
+  const pos=source.getAttribute('position'),flat=new Float32Array(pos.count*3);
+  for(let i=0;i<pos.count;i++){flat[i*3]=pos.getX(i);flat[i*3+1]=pos.getY(i);flat[i*3+2]=pos.getZ(i)}
+  const plain=new THREE.BufferGeometry();plain.setAttribute('position',new THREE.BufferAttribute(flat,3));if(source.index)plain.setIndex(Array.from(source.index.array));
+  const welded=mergeVertices(plain,.02);welded.computeVertexNormals();return welded;
 }
 
 async function addProp(file,position,height,rotation=0){
+  const target=island;
   try{
-    const gltf=await loader.loadAsync(`./assets/3d/${file}`),object=gltf.scene;object.userData.asset=true;object.traverse(o=>{o.userData.asset=true;if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});
+    const gltf=await loader.loadAsync(`./assets/3d/${file}`),object=gltf.scene;object.userData.asset=true;object.traverse(o=>{o.userData.asset=true;if(o.isMesh){o.castShadow=true;o.receiveShadow=true;const m=Array.isArray(o.material)?o.material[0]:o.material;if(!m.map)o.geometry=smoothGeometry(o.geometry);o.material=Object.assign(toon(m.color),{map:m.map||null,vertexColors:!!m.vertexColors})}});
     const box3=new THREE.Box3().setFromObject(object),size=box3.getSize(new THREE.Vector3()),center=box3.getCenter(new THREE.Vector3()),scale=height/Math.max(size.y,.001);
-    object.scale.setScalar(scale);object.position.set(position[0]-center.x*scale,position[1]-box3.min.y*scale,position[2]-center.z*scale);object.rotation.y=rotation;island.add(object);return object;
+    object.scale.setScalar(scale);object.position.set(position[0]-center.x*scale,position[1]-box3.min.y*scale,position[2]-center.z*scale);object.rotation.y=rotation;target.add(object);return object;
   }catch(error){console.warn('3D prop failed',file,error)}
 }
 
-function characterPart(geometry,color,position,scale,parent){
-  const part=mesh(geometry,standard(color),position,parent);part.scale.set(...scale);return part;
+function characterPart(geometry,color,position,scale,parent,outline=false){
+  const part=mesh(geometry,toon(color),position,parent);part.scale.set(...scale);
+  if(outline&&Math.max(...scale)>=.08){const hull=new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({color:inkFor(color),side:THREE.BackSide}));hull.scale.setScalar(1+.045/Math.max(.12,Math.min(...scale.map(Math.abs))));hull.castShadow=false;part.add(hull)}
+  return part;
 }
 
-function softPart(color,position,scale,parent,segments=12){
-  return characterPart(new THREE.SphereGeometry(1,segments,8),color,position,scale,parent);
+function softPart(color,position,scale,parent,segments=12,outline=false){
+  return characterPart(new THREE.SphereGeometry(1,Math.max(20,segments*2),Math.max(14,segments)),color,position,scale,parent,outline);
 }
 
 function addEar(parent,x,color,inner,round=false){
-  if(round){softPart(color,[x,1.45,.01],[.17,.17,.11],parent);softPart(inner,[x,1.46,.1],[.09,.09,.035],parent);return}
-  const ear=characterPart(new THREE.ConeGeometry(.19,.38,5),color,[x,1.48,.02],[1,1,1],parent);ear.rotation.z=x<0?.15:-.15;
-  const inset=characterPart(new THREE.ConeGeometry(.1,.22,5),inner,[x,1.48,.12],[1,1,1],parent);inset.rotation.z=ear.rotation.z;
+  if(round){softPart(color,[x*1.04,1.52,.01],[.17,.17,.11],parent,12,true);softPart(inner,[x*1.04,1.53,.1],[.09,.09,.035],parent);return}
+  const ear=characterPart(new THREE.ConeGeometry(.19,.38,12),color,[x*1.1,1.62,.02],[1,1,1],parent,true);ear.rotation.z=x<0?.22:-.22;
+  const inset=characterPart(new THREE.ConeGeometry(.1,.22,12),inner,[x*1.1,1.6,.12],[1,1,1],parent);inset.rotation.z=ear.rotation.z;
 }
 
 function addWhiskers(rig,y,z,color=0x4a3a35){
@@ -284,13 +400,13 @@ function addFace(rig,palette,moodKey,species){
   }
   if(species==='otter')softPart(palette.muzzle,[0,1.06,.33],[.3,.16,.1],rig);
   if(species==='hedgehog'){
-    const snout=characterPart(new THREE.ConeGeometry(.17,.34,10),palette.face,[0,1.1,.48],[1,1,1],rig);snout.rotation.x=Math.PI/2;
-    softPart(palette.face,[0,1.2,.32],[.3,.27,.12],rig);
+    softPart(palette.face,[0,1.08,.4],[.17,.13,.17],rig);
   }
   [-eyeX,eyeX].forEach((x,index)=>{
-    const eye=softPart(0x2f2928,[x,eyeY,eyeZ],[.052,sleepy?.022:.065,.026],rig,10);
+    const eye=softPart(0x2f2928,[x,eyeY,eyeZ],[.066,sleepy?.02:.082,.03],rig,10,false);
     if(sad)eye.rotation.z=index?-.28:.28;
-    if(!sleepy)softPart(0xffffff,[x-.016,eyeY+.025,eyeZ+.02],[.014,.018,.01],rig,8);
+    if(!sleepy){softPart(0xffffff,[x-.022,eyeY+.03,eyeZ+.025],[.022,.026,.012],rig,8,false);softPart(0xffffff,[x+.02,eyeY-.03,eyeZ+.024],[.01,.012,.008],rig,8,false)}
+    if(species!=='panda')softPart(0xf3a3a8,[x*1.85,eyeY-.11,eyeZ-.04],[.07,.04,.02],rig,8,false);
   });
   if(species==='capybara'){
     // Blunt, box-like capybara snout instead of the rounded bear muzzle.
@@ -300,8 +416,8 @@ function addFace(rig,palette,moodKey,species){
     return box([.12,.02,.02],[0,1.02,.56],0x5a3a2c,rig);
   }
   if(species==='hedgehog'){
-    softPart(0x2f2928,[0,1.1,.66],[.055,.05,.05],rig,8);
-    return softPart(moodKey==='sad'?0x58718a:0xc64f55,[0,1.01,.5],[.04,moodKey==='happy'?.04:.02,.015],rig,8);
+    softPart(0x3b2d2b,[0,1.11,.565],[.05,.04,.035],rig,8,false);
+    return softPart(moodKey==='sad'?0x58718a:0xc64f55,[0,1.0,.5],[.04,moodKey==='happy'?.04:.02,.015],rig,8,false);
   }
   softPart(palette.muzzle||palette.face,[-.095,1.08,.405],[.15,.12,.065],rig);softPart(palette.muzzle||palette.face,[.095,1.08,.405],[.15,.12,.065],rig);
   softPart(species==='penguin'?0xe8a63d:0x3b2d2b,[0,1.1,.48],[species==='penguin'?.09:.052,species==='penguin'?.055:.045,.035],rig,8);
@@ -331,15 +447,15 @@ function createCharacter(species,moodKey,scale=1,profession=''){
     sloth:{body:0xa59a86,face:0xeadfc8,muzzle:0xf3ead8,mask:0x4f4540,detail:0x6e6258},
     otter:{body:0x6f4a3a,face:0x8a5f4a,muzzle:0xe2c6a2,detail:0x4a3129},
     panda:{body:0xf5eee1,face:0xfaf6ed,muzzle:0xffffff,mask:0x353432,detail:0x353432},
-    hedgehog:{body:0xe3c39b,face:0xf2dcbd,muzzle:0xf2dcbd,detail:0x7a5640,spike:0x4e3426,spikeTip:0x7d5a40}
+    hedgehog:{body:0xe9cfa8,face:0xf6e3c6,muzzle:0xf6e3c6,detail:0x8a6446,spike:0x5a3c2b,spikeTip:0x7a5640}
   },palette=palettes[species]||palettes.capybara;
   const actor=new THREE.Group(),rig=new THREE.Group();actor.add(rig);actor.scale.setScalar(scale);
   const bodyScale=species==='capybara'?[.5,.5,.5]:species==='otter'?[.38,.6,.36]:[.43,.57,.39];
-  const body=softPart(palette.body,[0,.64,0],bodyScale,rig),head=softPart(palette.body,[0,1.18,.02],species==='capybara'?[.42,.4,.46]:[.45,.42,.4],rig);
+  const body=softPart(palette.body,[0,.64,0],bodyScale,rig,12,true),head=softPart(species==='hedgehog'?palette.face:palette.body,[0,1.18,species==='hedgehog'?.06:.02],species==='capybara'?[.44,.42,.48]:species==='hedgehog'?[.4,.38,.36]:[.48,.45,.42],rig,12,true);
   const limbColor=species==='redPanda'||species==='panda'?palette.detail:palette.body;
-  const leftArm=softPart(limbColor,[-.42,.67,.03],[.15,.36,.15],rig),rightArm=softPart(limbColor,[.42,.67,.03],[.15,.36,.15],rig);
+  const leftArm=softPart(limbColor,[-.42,.67,.03],[.15,.36,.15],rig,12,true),rightArm=softPart(limbColor,[.42,.67,.03],[.15,.36,.15],rig,12,true);
   leftArm.rotation.z=-.18;rightArm.rotation.z=.18;
-  const leftFoot=softPart(palette.detail,[-.22,.18,.13],[.2,.14,.25],rig),rightFoot=softPart(palette.detail,[.22,.18,.13],[.2,.14,.25],rig);
+  const leftFoot=softPart(palette.detail,[-.22,.18,.13],[.2,.14,.25],rig,12,true),rightFoot=softPart(palette.detail,[.22,.18,.13],[.2,.14,.25],rig,12,true);
   if(species==='cat'){addEar(rig,-.27,palette.body,0xf3a8a0);addEar(rig,.27,palette.body,0xf3a8a0)}
   if(species==='redPanda'){addEar(rig,-.3,0xfff4e6,palette.body);addEar(rig,.3,0xfff4e6,palette.body)}
   if(species==='otter'){softPart(palette.body,[-.36,1.3,0],[.09,.09,.07],rig);softPart(palette.body,[.36,1.3,0],[.09,.09,.07],rig);softPart(palette.muzzle,[0,.7,.3],[.27,.38,.1],rig)}
@@ -353,17 +469,18 @@ function createCharacter(species,moodKey,scale=1,profession=''){
     softPart(palette.detail,[0,.92,0],[.445,.16,.405],rig);
   }
   if(species==='hedgehog'){
-    // Spines cover the crown and back, so the silhouette reads as a hedgehog from every side.
-    const up=new THREE.Vector3(0,1,0),center=new THREE.Vector3(0,.95,-.06);let index=0;
-    for(let ring=0;ring<4;ring++){
-      const elevation=-.35+ring*.42,count=[14,15,13,7][ring];
-      for(let i=0;i<count;i++){
-        const azimuth=(i/count)*Math.PI*2+ring*.3,dir=new THREE.Vector3(Math.sin(azimuth)*Math.cos(elevation),Math.sin(elevation),Math.cos(azimuth)*Math.cos(elevation));
-        if(dir.z>.3&&dir.y<.42)continue;
-        const spike=characterPart(new THREE.ConeGeometry(.09,.4,5),index++%3?palette.spike:palette.spikeTip,center.clone().addScaledVector(dir,.52).toArray(),[1,1,1],rig);
-        spike.quaternion.setFromUnitVectors(up,dir.normalize());
-      }
+    // Spine cloak over the crown and back; spines lean backwards along it, the cream face stays clear in front.
+    softPart(palette.spike,[0,1.17,-.1],[.5,.47,.44],rig,12,true);softPart(palette.spike,[0,.7,-.14],[.45,.52,.38],rig,12,true);
+    const up=new THREE.Vector3(0,1,0),n=110;
+    for(let i=0;i<n;i++){
+      const y=1-2*(i+.5)/n,r=Math.sqrt(1-y*y),a=i*2.39996+(i%2)*.7,dir=new THREE.Vector3(Math.cos(a)*r,y,Math.sin(a)*r);
+      if(dir.z>.05||dir.y<-.55)continue;
+      const onHead=i%2===0,center=onHead?new THREE.Vector3(0,1.17,-.1):new THREE.Vector3(0,.7,-.14),radii=onHead?[.5,.47,.44]:[.45,.52,.38];
+      const at=center.clone().add(new THREE.Vector3(dir.x*radii[0],dir.y*radii[1],dir.z*radii[2]).multiplyScalar(.96));
+      const lean=dir.clone().add(new THREE.Vector3(0,.12,-.45)).normalize();
+      const spike=characterPart(new THREE.ConeGeometry(.075,.36,6),i%3?palette.spike:palette.spikeTip,at.toArray(),[1,1,1],rig,false);spike.quaternion.setFromUnitVectors(up,lean);
     }
+    [-1,1].forEach(side=>{softPart(palette.face,[side*.3,1.43,.08],[.1,.1,.06],rig,12,true);softPart(0xf3a8a0,[side*.3,1.43,.13],[.055,.055,.02],rig,8,false)});
   }
   if(species==='penguin'){
     leftArm.scale.set(.13,.43,.13);rightArm.scale.set(.13,.43,.13);leftArm.rotation.z=-.48;rightArm.rotation.z=.48;
@@ -372,29 +489,29 @@ function createCharacter(species,moodKey,scale=1,profession=''){
   let tail=null;
   if(species==='redPanda'){
     tail=new THREE.Group();tail.position.set(.39,.5,-.2);tail.rotation.z=-.72;rig.add(tail);
-    [0,.2,.4,.6,.78].forEach((y,index)=>softPart(index%2?0xf3d8b8:palette.body,[0,y,0],[.24,.2,.24],tail));
+    [0,.2,.4,.6,.78].forEach((y,index)=>softPart(index%2?0xf3d8b8:palette.body,[0,y,0],[.24,.2,.24],tail,12,true));
   }else if(species==='cat'){
     tail=new THREE.Group();tail.position.set(.3,.36,-.3);rig.add(tail);
-    [[0,0,0],[.12,.14,-.04],[.2,.3,-.06],[.22,.48,-.06],[.18,.64,-.04]].forEach(([x,y,z],index)=>softPart(index%2?palette.detail:palette.body,[x,y,z],[.085,.11,.085],tail));
+    [[0,0,0],[.12,.14,-.04],[.2,.3,-.06],[.22,.48,-.06],[.18,.64,-.04]].forEach(([x,y,z],index)=>softPart(index%2?palette.detail:palette.body,[x,y,z],[.085,.11,.085],tail,12,true));
   }else if(species==='otter'){
-    tail=characterPart(new THREE.ConeGeometry(.16,.7,8),palette.body,[0,.24,-.5],[1,1,.6],rig);tail.rotation.x=-1.25;
+    tail=characterPart(new THREE.ConeGeometry(.16,.7,14),palette.body,[0,.24,-.5],[1,1,.6],rig,true);tail.rotation.x=-1.25;
   }
   addFace(rig,palette,moodKey,species);addProfessionAccessory(rig,profession);
   actor.userData={rig,body,head,leftArm,rightArm,leftFoot,rightFoot,tail,moodKey,phase:0,anchor:new THREE.Vector3(),baseRotation:0,motion:'look',baseScale:scale,bodyY:bodyScale[1],tailBaseX:tail?tail.rotation.x:0};
   return actor;
 }
 
-async function addAnimal(key,profession,token,animalKey=''){
+async function addAnimal(key,profession,token,animalKey='',layout=fallbackLayout){
   if(token!==openToken)return;
-  const actor=createCharacter(animalKey||moods[key].species,key,1.04,profession);actor.name='moodAnimal';actor.position.set(1.34,.36,-.28);actor.rotation.y=.62;
+  const [x,z]=worldXZ(...layout.hero),actor=createCharacter(animalKey||moods[key].species,key,.92,profession);actor.name='moodAnimal';actor.position.set(x,.36,z);actor.rotation.y=.62;
   actor.userData.anchor.copy(actor.position);actor.userData.baseRotation=actor.rotation.y;actor.userData.motion='hero';actor.userData.phase=.4;
   island.add(actor);characterActors.push(actor);
   loading.hidden=true;homeLoading.hidden=true;canvas.removeAttribute('aria-busy');homeCanvas.removeAttribute('aria-busy');
 }
 
-async function addResidentAnimal(species,residentMood,slot,index,token){
+async function addResidentAnimal(species,residentMood,slot,index,token,spot){
   if(token!==openToken)return;
-  const actor=createCharacter(species,residentMood,slot.scale);actor.name=`residentAnimal-${index+1}`;actor.position.set(...slot.position);actor.rotation.y=slot.rotation;
+  const [x,z]=worldXZ(...spot),actor=createCharacter(species,residentMood,slot.scale);actor.name=`residentAnimal-${index+1}`;actor.position.set(x,.36,z);actor.rotation.y=slot.rotation;
   const phase=index*1.37+(hashString(species)%11)*.17;
   actor.userData.anchor.copy(actor.position);actor.userData.baseRotation=slot.rotation;actor.userData.motion=slot.motion;actor.userData.phase=phase;
   island.add(actor);characterActors.push(actor);
@@ -402,21 +519,10 @@ async function addResidentAnimal(species,residentMood,slot,index,token){
 
 async function addResidentAnimals(config,key,token){
   const neighbors=(config.neighbors||[]).slice(0,residentSlots.length);
-  const residents=neighbors.map((neighbor,index)=>addResidentAnimal(neighbor.species,key,residentSlots[index],index,token));
+  const residents=neighbors.map((neighbor,index)=>addResidentAnimal(neighbor.species,key,residentSlots[index],index,token,(config.layout||fallbackLayout).slots[index]));
   await Promise.all(residents);
 }
 
-async function populateNature(token){
-  await Promise.all([
-    addProp('TreeHigh001.glb',[2.25,.34,-1.4],1.2,.45),
-    addProp('TreeLow001.glb',[-2.3,.34,-1.15],.9,-.35),
-    addProp('TreeLow001.glb',[2.25,.34,.75],.7,.6),
-    addProp('Rock001.glb',[2.25,.34,-.05],.3,.25),
-    addProp('Rock001.glb',[-2.25,.34,1.3],.26,-.1),
-    addProp('Bush001.glb',[-2.15,.34,-1.45],.42,-.2),
-    addProp('Bush001.glb',[-2.48,.34,-1.5],.34,.35)
-  ]);if(token!==openToken)return;
-}
 
 function animate(){
   requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05),time=clock.elapsedTime;
@@ -462,9 +568,10 @@ async function open(config,target='modal'){
   const neighbors=(config.neighbors||[]).slice(0,residentSlots.length),shownBugs=Math.min(config.count||0,INSECT_DISPLAY_MAX);
   const animalLabel=animalLabels[config.animalKey]||cfg.animal;
   moodCard.innerHTML=`<strong>${cfg.face} ${animalLabel}</strong><span>${config.mood}${config.professionLabel?` · ${config.professionLabel}帽`:''}${neighbors.length?` · ${neighbors.length} 位鄰居`:''} · ${config.count||0} 隻昆蟲${config.count>shownBugs?`（顯示 ${shownBugs}）`:''}</span>`;
-  clearScene();addLights(key);targetTurn=0;buildIsland(key,config.count||0,config.professionKey||'');
+  const layout=config.layout||fallbackLayout;
+  clearScene();addLights(key);targetTurn=0;const nature=buildIsland(key,config.count||0,config.professionKey||'',layout);
   addSky(key);
-  if(config.empty){addEgg();await populateNature(token);loadingTarget.hidden=true;homeCanvas.removeAttribute('aria-busy')}else await Promise.all([populateNature(token),addAnimal(key,config.professionKey||'',token,config.animalKey||''),addResidentAnimals(config,key,token)]);resize();
+  if(config.empty){addEgg(layout);await nature;loadingTarget.hidden=true;homeCanvas.removeAttribute('aria-busy')}else await Promise.all([nature,addAnimal(key,config.professionKey||'',token,config.animalKey||'',layout),addResidentAnimals(config,key,token)]);resize();
 }
 
 function preview(config){
@@ -486,8 +593,8 @@ async function renderThumbnails(configs){
     const signature=thumbnailSignature(config),cached=thumbnailCache.get(signature);if(cached){await paintCachedThumbnail(target,cached);continue}
     renderTarget='thumbnail';
     const token=++openToken,key=config.moodKey||'neutral';
-    clearScene();addLights(key);targetTurn=.18;buildIsland(key,config.count||0,config.professionKey||'');
-    await Promise.all([populateNature(token),addAnimal(key,config.professionKey||'',token,config.animalKey||''),addResidentAnimals(config,key,token)]);
+    clearScene();addLights(key);targetTurn=.18;const nature=buildIsland(key,config.count||0,config.professionKey||'',config.layout||fallbackLayout);
+    await Promise.all([nature,addAnimal(key,config.professionKey||'',token,config.animalKey||'',config.layout||fallbackLayout),addResidentAnimals(config,key,token)]);
     if(run!==thumbnailRun||token!==openToken||dialog.open)return;
     island.rotation.y=.18;camera.position.set(0,9.2,4.25);camera.lookAt(0,.12,0);
     const width=560,height=360,view=4.05,aspect=width/height;camera.left=-view*aspect;camera.right=view*aspect;camera.top=view;camera.bottom=-view;camera.updateProjectionMatrix();
