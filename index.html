@@ -9,7 +9,7 @@
   <link rel="manifest" href="manifest.webmanifest?v=16">
   <link rel="stylesheet" href="styles.css?v=52">
   <link rel="stylesheet" href="atlas.css?v=5">
-  <link rel="stylesheet" href="redesign.css?v=46">
+  <link rel="stylesheet" href="redesign.css?v=48">
 </head>
 <body>
   <div class="sky-decor" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -130,7 +130,9 @@
         <label class="field"><span>圖示</span><select id="itemIcon"><option>💗</option><option>💼</option><option>🎨</option><option>🌱</option><option>🧺</option><option>☕</option><option>🌧️</option><option>📚</option><option>🏃</option><option>✨</option></select></label>
       </div>
       <label class="field"><span>自訂分組（選填）</span><input id="itemCategory" maxlength="20" placeholder="例如：居家、健康"></label>
-      <label class="field"><span>島上的小居民</span><select id="itemResident"><option value="auto">✨ 依活動名稱自動判斷</option></select><small>我們會自動選擇，也可以由你指定；這不會改變活動的主要分類。</small></label>
+      <label class="field" hidden><span>島上的小居民</span><select id="itemResident"><option value="auto">✨ 依活動名稱自動判斷</option></select><small>我們會自動選擇，也可以由你指定；這不會改變活動的主要分類。</small></label>
+      <label class="check-row" id="itemDoneRow"><input type="checkbox" id="itemDoneNow"><span>剛剛已經做了這件事（同時記一次）</span></label>
+      <div class="mood-picker compact" id="itemMoodPicker" role="radiogroup" aria-label="做完時的心情" hidden><label><input type="radio" name="itemMood" value="開心"><span><b>●ᴗ●</b><small>開心</small></span></label><label><input type="radio" name="itemMood" value="有成就"><span><b>★ᴗ★</b><small>有成就</small></span></label><label><input type="radio" name="itemMood" value="平靜"><span><b>─ᴗ─</b><small>平靜</small></span></label><label><input type="radio" name="itemMood" value="普通" checked><span><b>•ᴗ•</b><small>普通</small></span></label><label><input type="radio" name="itemMood" value="疲累"><span><b>─︿─</b><small>疲累</small></span></label><label><input type="radio" name="itemMood" value="不開心"><span><b>•︿•</b><small>不開心</small></span></label></div>
       <div class="modal-actions"><button type="button" class="danger-link" id="deleteItemBtn" hidden>刪除活動</button><span></span><button value="cancel" class="ghost-button">取消</button><button type="submit" class="primary-button">儲存活動</button></div>
     </form>
   </dialog>
@@ -164,8 +166,8 @@
   </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"><span id="toastText"></span><button id="toastAction" hidden>復原</button></div>
   <script src="cloud-config.js?v=2"></script>
-  <script src="cloud.js?v=1"></script>
-  <script type="module" src="island3d.js?v=49"></script>
-  <script src="app.js?v=69"></script>
+  <script src="cloud.js?v=2"></script>
+  <script type="module" src="island3d.js?v=50"></script>
+  <script src="app.js?v=70"></script>
 </body>
 </html>

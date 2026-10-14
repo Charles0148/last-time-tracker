@@ -1,6 +1,6 @@
 <!doctype html><html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><base href="../"><title>拼圖驗收示例（不儲存資料）</title><link rel="stylesheet" href="atlas.css?v=5"><style>body{margin:24px;background:#faf4ea;font-family:system-ui;color:#354f48}h1{font-size:22px}main{max-width:1200px;margin:auto}button{font:inherit}#result{white-space:pre-wrap;font-size:13px}</style><main><h1>拼圖驗收示例：三天、不同心情、1／4／34 隻昆蟲（超過 30 隻顯示上限）</h1><p>獨立測試資料，沒有讀寫 localStorage，也沒有載入 app 的啟動程式。</p><div id="residentLegend"></div><div id="archipelago"></div><p id="result"></p></main><script>
 (async()=>{
-  const source=await fetch('app.js?v=69').then(r=>r.text());
+  const source=await fetch('app.js?v=70').then(r=>r.text());
   const begin=source.indexOf('function atlasOutline('),end=source.indexOf('\nfunction openIsland3d',begin);
   const renderer=source.slice(begin,end),layoutStart=source.indexOf('// Island terrain.'),layoutCode=source.slice(layoutStart,source.indexOf('function islandHtml(',layoutStart));
   const dates=['2026-10-10','2026-10-11','2026-10-12'];

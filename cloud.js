@@ -1,12 +1,13 @@
 /* ===== 帳號與雲端同步（Supabase，只用瀏覽器內建 fetch）=====
    資料表 public.diaries：user_id uuid 主鍵（= 登入者 id）、data jsonb（整份紀錄）、updated_at。
    RLS 開啟，select/insert/update/delete 都限定 auth.uid() = user_id。
-   本機開發：在 localhost／127.0.0.1 加上 ?supabase=<網址> 可以改連本機的測試伺服器。 */
+   本機開發：在 localhost／127.0.0.1 加上 ?supabase=<網址> 改連本機測試伺服器，?supabase=off 則不連雲端。 */
 (function () {
   'use strict';
   const LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
   const override = LOCAL ? new URLSearchParams(location.search).get('supabase') : null;
-  const CFG = override ? { url: override, anonKey: 'local-test-key' } : (window.SUPABASE || {});
+  // ?supabase=off (localhost only) runs an unsynced preview for visual tests.
+  const CFG = override === 'off' ? {} : override ? { url: override, anonKey: 'local-test-key' } : (window.SUPABASE || {});
   const SESSION_KEY = 'lastnote.cloud.session', SYNC_KEY = 'lastnote.cloud.sync';
   const configured = () => !!(CFG.url && CFG.anonKey);
   let session = read(SESSION_KEY), sync = read(SYNC_KEY) || {}, pushTimer = null, state = 'idle', listeners = [], lastData = null;

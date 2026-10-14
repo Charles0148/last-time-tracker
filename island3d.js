@@ -142,7 +142,7 @@ function buildIsland(key,count,profession,layout=fallbackLayout){
     const [x,z]=worldXZ(layout.hero[0]-.5,layout.hero[1]-.55),pole=new THREE.Group();pole.position.set(x,GROUND,z);island.add(pole);addFlag(pole,0);
   }
   addProfessionMarker(profession,layout);
-  addInsects(count,key);
+  addInsects(count,key,layout);
   if(key==='sad')addRain();
   if(key==='tired'||key==='sad')scene.fog=new THREE.FogExp2(key==='sad'?0x526172:0x9aa9ae,key==='sad' ? .045 : .04);
   return Promise.all(loads);
@@ -278,7 +278,19 @@ function addProfessionMarker(profession,layout){
   const sign=box([.7,.38,.08],[.28,.72,0],palette[profession]||0x6b86a8,marker);sign.userData.float=true;
 }
 
-function addInsects(count,key){
+// Open ground for insects: island interior minus hills, water, fields, buildings, trees, rocks and the animal's spot.
+function insectSpots(layout,margin){
+  const block={hill:f=>f.r*1.1+.15,lake:f=>f.r*1.15+.1,pond:f=>f.r*1.15+.1,islet:()=>.5,field:f=>Math.hypot(f.w,f.dd)/2+.15,house:()=>.55,arch:()=>.6,tree:f=>.22+(f.h||.8)*.15,rock:f=>(f.s||.3)*.8+.1,haystack:()=>.3,umbrella:()=>.45,mushroom:()=>.15};
+  const blockers=layout.features.filter(f=>'l'in f&&block[f.type]).map(f=>{const [x,z]=worldXZ(f.l,f.d);return{x,z,r:block[f.type](f)}});
+  const [hx,hz]=worldXZ(...layout.hero);blockers.push({x:hx,z:hz,r:.45});
+  const reach=Math.min(...layout.radii)*layout.size*.82-margin,spots=[];
+  for(let x=-reach;x<=reach;x+=.28)for(let z=-reach;z<=reach;z+=.28){if(Math.hypot(x,z)>reach)continue;if(blockers.some(b=>Math.hypot(x-b.x,z-b.z)<b.r+margin))continue;spots.push([x,z])}
+  return spots.length?spots:[[0,0]];
+}
+
+function addInsects(count,key,layout=fallbackLayout){
+  const rand=(seed=>()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296})(hashString(key+'-bugs'));
+  const ground=insectSpots(layout,.05),air=insectSpots(layout,.38);
   // Same cap and the same four kinds (ladybug, bee, blue butterfly, grasshopper) as the 2D atlas piece.
   const shown=Math.min(count,INSECT_DISPLAY_MAX);
   for(let i=0;i<shown;i++){
@@ -296,8 +308,11 @@ function addInsects(count,key){
     if(kind===3){mesh(new THREE.BoxGeometry(.03,.14,.03),standard(0x5f9a3c),[-.08,-.02,-.1],bug).rotation.x=.9;mesh(new THREE.BoxGeometry(.03,.14,.03),standard(0x5f9a3c),[.08,-.02,-.1],bug).rotation.x=.9}
     if(kind===1){mesh(new THREE.TorusGeometry(.072,.014,6,18),standard(0x3d342f),[0,0,-.03],bug);mesh(new THREE.TorusGeometry(.068,.014,6,18),standard(0x3d342f),[0,0,.04],bug)}
     if(kind===0){mesh(new THREE.SphereGeometry(.02,8,6),standard(0x342d2b),[-.035,.065,-.045],bug);mesh(new THREE.SphereGeometry(.02,8,6),standard(0x342d2b),[.035,.065,.035],bug)}
-    const angle=(i/shown)*Math.PI*2+(key.charCodeAt(key.length-1)%8)*.16,radius=1.55+(i%3)*.22;
-    bug.position.set(Math.cos(angle)*radius,.68+(i%4)*.1,.05+Math.sin(angle)*radius);bug.userData={angle,radius,speed:.35+(i%5)*.05,phase:i*.8,wings:[w1,w2]};island.add(bug);insects.push(bug);
+    // Ladybugs crawl and grasshoppers hop on open ground; bees hover and butterflies drift over open spots.
+    const spots=kind===1||kind===2?air:ground,pick=()=>spots[Math.floor(rand()*spots.length)],home=pick();
+    const hops=kind===3?[home,...[0,1,2].map(()=>{const near=ground.filter(p=>Math.hypot(p[0]-home[0],p[1]-home[1])<.75);return near[Math.floor(rand()*near.length)]||home})]:null;
+    bug.userData={kind,home,hops,phase:rand()*Math.PI*2,speed:.7+rand()*.6,height:kind===2?.78+rand()*.22:kind===1?.6+rand()*.15:GROUND+.06,wings:[w1,w2],last:new THREE.Vector3()};
+    bug.position.set(home[0],bug.userData.height,home[1]);bug.scale.setScalar(kind===0||kind===3?.8:1);island.add(bug);insects.push(bug);
   }
 }
 
@@ -312,7 +327,8 @@ function addRain(){
 function addEgg(layout){
   const [x,z]=worldXZ(...layout.hero),egg=mesh(new THREE.SphereGeometry(.34,18,14),standard(0xf0b16e),[x,.72,z]);
   egg.scale.set(.74,1.04,.74);egg.rotation.z=-.06;
-  const glow=new THREE.PointLight(0xffd79a,1.1,4);glow.position.set(0,1.8,.5);island.add(glow);
+  softPart(0xe98598,[x-.12,.62,z+.24],[.05,.05,.03],island,8);softPart(0x72afbd,[x+.14,.78,z+.2],[.045,.045,.03],island,8);egg.material=toon(0xfff1dc);
+  const outline=new THREE.Mesh(egg.geometry,new THREE.MeshBasicMaterial({color:0x9a7a5a,side:THREE.BackSide}));outline.scale.setScalar(1.06);egg.add(outline);
 }
 
 // Screen-anchored sky position: sx/sy in view units from the look-at point, pushed behind the island.
@@ -528,7 +544,18 @@ function animate(){
   requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05),time=clock.elapsedTime;
   mixers.forEach(m=>m.update(dt));
   if(island){island.rotation.y=THREE.MathUtils.damp(island.rotation.y,targetTurn,8,dt);island.children.forEach(o=>{if(o.userData.float)o.position.y+=Math.sin(time*2)*.0005})}
-  insects.forEach((bug,i)=>{bug.userData.angle+=dt*bug.userData.speed;bug.position.x=Math.cos(bug.userData.angle)*bug.userData.radius;bug.position.z=.05+Math.sin(bug.userData.angle)*bug.userData.radius;bug.position.y=.72+(i%4)*.1+Math.sin(time*3+bug.userData.phase)*.09;bug.rotation.y=-bug.userData.angle;const flap=.18+Math.abs(Math.sin(time*12+bug.userData.phase))*.42;bug.userData.wings[0].rotation.z=flap;bug.userData.wings[1].rotation.z=-flap});
+  insects.forEach(bug=>{
+    const u=bug.userData,reduced=matchMedia('(prefers-reduced-motion: reduce)').matches,t=time*(reduced?.25:1)*u.speed+u.phase,[hx,hz]=u.home;
+    u.last.copy(bug.position);let flap=0;
+    if(u.kind===0){bug.position.set(hx+Math.cos(t*.5)*.14,u.height,hz+Math.sin(t*.5)*.14)} // ladybug: slow crawl, wings closed
+    else if(u.kind===3){ // grasshopper: rest, then a short parabolic hop to the next nearby spot
+      const cycle=2.4,step=Math.floor(t/cycle),k=(t%cycle)/cycle,from=u.hops[step%u.hops.length],to=u.hops[(step+1)%u.hops.length],hop=Math.min(1,Math.max(0,(k-.7)/.3));
+      bug.position.set(from[0]+(to[0]-from[0])*hop,u.height+Math.sin(hop*Math.PI)*.32,from[1]+(to[1]-from[1])*hop);flap=hop>0&&hop<1?.5:0;
+    }else if(u.kind===1){bug.position.set(hx+Math.sin(t*1.3)*.26,u.height+Math.sin(t*3.1)*.05,hz+Math.sin(t*1.9)*.2);flap=.3+Math.abs(Math.sin(time*40))*.5} // bee: quick hover
+    else{bug.position.set(hx+Math.sin(t*.7)*.36,u.height+Math.sin(t*1.6)*.12,hz+Math.sin(t*1.1+1)*.3);flap=.2+Math.abs(Math.sin(time*7+u.phase))*.9} // butterfly: slow drift
+    const dx=bug.position.x-u.last.x,dz=bug.position.z-u.last.z;if(Math.abs(dx)+Math.abs(dz)>1e-4)bug.rotation.y=Math.atan2(dx,dz);
+    u.wings[0].rotation.z=flap;u.wings[1].rotation.z=-flap;
+  });
   characterActors.forEach(actor=>{
     const {anchor,baseRotation,motion,phase,rig,body,head,leftArm,rightArm,leftFoot,rightFoot,tail,moodKey}=actor.userData;
     const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches,amount=reduced?.18:1,pulse=Math.sin(time*1.8+phase);
@@ -565,13 +592,13 @@ async function open(config,target='modal'){
   const token=++openToken,key=config.moodKey||'neutral',cfg=moods[key]||moods.neutral;
   const loadingTarget=target==='home'?homeLoading:loading;loadingTarget.hidden=false;loadingTarget.textContent=target==='home'?'正在長出今天的小島…':'正在長出真正的 3D 動物島…';
   (target==='home'?homeCanvas:canvas).setAttribute('aria-busy','true');
-  const neighbors=(config.neighbors||[]).slice(0,residentSlots.length),shownBugs=Math.min(config.count||0,INSECT_DISPLAY_MAX);
+  const shownBugs=Math.min(config.count||0,INSECT_DISPLAY_MAX),hatched=config.hatched!==false&&!config.empty,toHatch=Math.max(0,4-(config.count||0));
   const animalLabel=animalLabels[config.animalKey]||cfg.animal;
-  moodCard.innerHTML=`<strong>${cfg.face} ${animalLabel}</strong><span>${config.mood}${config.professionLabel?` · ${config.professionLabel}帽`:''}${neighbors.length?` · ${neighbors.length} 位鄰居`:''} · ${config.count||0} 隻昆蟲${config.count>shownBugs?`（顯示 ${shownBugs}）`:''}</span>`;
+  moodCard.innerHTML=hatched?`<strong>${cfg.face} ${animalLabel}</strong><span>${config.mood}${config.professionLabel?` · ${config.professionLabel}帽`:''} · ${config.count||0} 隻昆蟲${config.count>shownBugs?`（顯示 ${shownBugs}）`:''}</span>`:`<strong>🥚 蛋</strong><span>${config.mood} · 還差 ${toHatch} 件事孵化 · ${config.count||0} 隻昆蟲</span>`;
   const layout=config.layout||fallbackLayout;
   clearScene();addLights(key);targetTurn=0;const nature=buildIsland(key,config.count||0,config.professionKey||'',layout);
   addSky(key);
-  if(config.empty){addEgg(layout);await nature;loadingTarget.hidden=true;homeCanvas.removeAttribute('aria-busy')}else await Promise.all([nature,addAnimal(key,config.professionKey||'',token,config.animalKey||'',layout),addResidentAnimals(config,key,token)]);resize();
+  if(!hatched){addEgg(layout);await nature;loadingTarget.hidden=true;homeLoading.hidden=true;canvas.removeAttribute('aria-busy');homeCanvas.removeAttribute('aria-busy')}else await Promise.all([nature,addAnimal(key,config.professionKey||'',token,config.animalKey||'',layout)]);resize();
 }
 
 function preview(config){
